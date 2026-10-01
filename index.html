@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BadvelNet Live — NOC Network Monitor</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  
+  <!-- OneSignal SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --panel-bg: #111827;
+      --card-bg: #1f2937;
+      --card-border: #374151;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --online-color: #10b981;
+      --online-bg: rgba(16, 185, 129, 0.12);
+      --offline-color: #ef4444;
+      --offline-bg: rgba(239, 68, 68, 0.15);
+      --flapping-color: #f59e0b;
+      --flapping-bg: rgba(245, 158, 11, 0.15);
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header & Top Bar */
+    header {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 1000;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-noc {
+      font-size: 0.65rem;
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid #0284c7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Stats Ribbon */
+    .stats-ribbon {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stat-pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .stat-pill.online {
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .stat-pill.offline {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+    .stat-pill.flapping {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .dot-green { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .dot-red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    .dot-amber { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+    /* Search & Header Controls */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 180px;
+      transition: all 0.2s;
+    }
+    .search-box:focus {
+      outline: none;
+      border-color: var(--accent);
+      width: 220px;
+    }
+
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+    }
+
+    .user-tag {
+      font-size: 0.75rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .role-badge {
+      font-weight: bold;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+    .role-admin { background: #7c3aed; color: #fff; }
+    .role-operator { background: #0284c7; color: #fff; }
+    .role-viewer { background: #475569; color: #cbd5e1; }
+
+    /* 3-Panel Main Layout */
+    .app-main {
+      flex: 1;
+      display: flex;
+      height: calc(100vh - 60px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-bg);
+      border-right: 1px solid #1f2937;
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+
+    .panel-left {
+      width: 320px;
+      min-width: 280px;
+    }
+
+    .panel-right {
+      width: 320px;
+      min-width: 280px;
+      border-right: none;
+      border-left: 1px solid #1f2937;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      background: #111827;
+      border-bottom: 1px solid #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-count {
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.75rem;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    .host-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Host Card / Pill */
+    .host-pill {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+
+    .host-pill:hover {
+      transform: translateY(-2px);
+      border-color: #6b7280;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .host-pill.active {
+      border-color: var(--accent);
+      background: #1e293b;
+    }
+
+    .host-pill.online-pill {
+      border-left: 4px solid var(--online-color);
+    }
+
+    .host-pill.offline-pill {
+      border-left: 4px solid var(--offline-color);
+      background: rgba(239, 68, 68, 0.04);
+    }
+
+    .host-pill.flapping-pill {
+      border-left: 4px solid var(--flapping-color);
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    .host-pill-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .host-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #f3f4f6;
+    }
+
+    .host-uptime {
+      font-size: 0.75rem;
+      font-family: monospace;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .host-pill-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .host-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-status {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-status.online { background: var(--online-bg); color: #34d399; }
+    .badge-status.offline { background: var(--offline-bg); color: #f87171; }
+    .badge-status.flapping { background: var(--flapping-bg); color: #fbbf24; }
+
+    /* Map Center Container */
+    .map-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background: #0b0f19;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #0b0f19;
+    }
+
+    .map-overlay-tools {
+      position: absolute;
+      bottom: 24px;
+      left: 16px;
+      z-index: 800;
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+    }
+
+    /* Dark Mode Filter for OpenStreetMap Tiles */
+    .leaflet-tile.dark-tiles,
+    .dark-tiles .leaflet-tile {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    }
+
+    /* Layer Control Styling for Dark Theme */
+    .leaflet-control-layers {
+      background: #111827 !important;
+      color: #f3f4f6 !important;
+      border: 1px solid #374151 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+      font-size: 0.8rem !important;
+      font-weight: 500 !important;
+    }
+    .leaflet-control-layers-expanded {
+      padding: 10px 14px !important;
+    }
+    .leaflet-control-layers-base label {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      cursor: pointer !important;
+      margin-bottom: 6px !important;
+    }
+    .leaflet-control-layers-base label:last-child {
+      margin-bottom: 0 !important;
+    }
+    .leaflet-control-layers-base input[type="radio"] {
+      accent-color: var(--accent) !important;
+      cursor: pointer !important;
+    }
+
+    .leaflet-control-attribution {
+      background: rgba(15, 23, 42, 0.8) !important;
+      color: #94a3b8 !important;
+      font-size: 0.65rem !important;
+      border-top-left-radius: 6px;
+      padding: 2px 8px !important;
+    }
+    .leaflet-control-attribution a {
+      color: #38bdf8 !important;
+      text-decoration: none !important;
+    }
+
+    /* Marker Pin Styles & Pulse Animation */
+    .leaflet-div-icon {
+      background: transparent !important;
+      border: none !important;
+    }
+
+    .leaflet-custom-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+    }
+    .leaflet-custom-marker:focus,
+    .leaflet-custom-marker:active {
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    .coord-inspector {
+      position: absolute;
+      bottom: 24px;
+      right: 16px;
+      z-index: 800;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      color: #f3f4f6;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Custom Cluster Badges matching Image 2 */
+    .marker-cluster-small {
+      background-color: rgba(134, 239, 172, 0.55) !important;
+    }
+    .marker-cluster-small div {
+      background-color: rgba(74, 222, 128, 0.9) !important;
+      color: #14532d !important;
+      font-weight: 700 !important;
+      font-size: 12px !important;
+    }
+
+    .marker-cluster-medium {
+      background-color: rgba(254, 240, 138, 0.55) !important;
+    }
+    .marker-cluster-medium div {
+      background-color: rgba(250, 204, 21, 0.92) !important;
+      color: #713f12 !important;
+      font-weight: 700 !important;
+      font-size: 12px !important;
+    }
+
+    .marker-cluster-large {
+      background-color: rgba(254, 202, 202, 0.55) !important;
+    }
+    .marker-cluster-large div {
+      background-color: rgba(248, 113, 113, 0.92) !important;
+      color: #7f1d1d !important;
+      font-weight: 700 !important;
+      font-size: 12px !important;
+    }
+
+    /* Offline & Highlighted Host Labels matching Image 2 */
+    .host-pill-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      pointer-events: auto;
+    }
+    .host-pill-label.offline {
+      background: #ef4444;
+      color: #ffffff;
+      border: 1px solid #b91c1c;
+    }
+    .host-pill-label.online {
+      background: #0284c7;
+      color: #ffffff;
+      border: 1px solid #0369a1;
+    }
+    .host-label-tooltip {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    .host-label-tooltip::before {
+      display: none !important;
+    }
+
+    .pin-circle {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      transition: all 0.4s ease;
+    }
+
+    .pin-circle.online {
+      background: #10b981;
+      box-shadow: 0 0 12px #10b981;
+    }
+
+    .pin-circle.offline {
+      background: #ef4444;
+      box-shadow: 0 0 14px #ef4444;
+      animation: offlineRipple 1.8s infinite ease-out;
+    }
+
+    .pin-circle.flapping {
+      background: #f59e0b;
+      box-shadow: 0 0 12px #f59e0b;
+      animation: flappingPulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes offlineRipple {
+      0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8), 0 0 10px #ef4444;
+      }
+      70% {
+        box-shadow: 0 0 0 14px rgba(239, 68, 68, 0), 0 0 12px #ef4444;
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 0 8px #ef4444;
+      }
+    }
+
+    @keyframes flappingPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+    }
+
+    @keyframes pinPulse {
+      0% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(2.2); filter: brightness(2); box-shadow: 0 0 30px #ffffff; }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+
+    .pin-pulse-active {
+      animation: pinPulse 0.8s ease-in-out;
+    }
+
+    /* Floating Transition Clone (Flip Animation) */
+    .flight-clone {
+      position: fixed;
+      z-index: 9999;
+      pointer-events: none;
+      background: #1f2937;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Modals & Overlays */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 480px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .modal-box.modal-lg {
+      max-width: 720px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #fff; }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      background: #1f2937;
+      border: 1px solid #374151;
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .error-banner {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* History Timeline */
+    .timeline {
+      max-height: 380px;
+      overflow-y: auto;
+      padding-left: 16px;
+      border-left: 2px solid #374151;
+      margin-top: 16px;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 20px;
+      padding-left: 12px;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -21px;
+      top: 2px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #9ca3af;
+      border: 2px solid #111827;
+    }
+    .timeline-dot.online { background: #10b981; }
+    .timeline-dot.offline { background: #ef4444; }
+
+    .timeline-time {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .timeline-desc {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #e2e8f0;
+      margin-top: 2px;
+    }
+
+    /* Responsive Mobile Navigation Tabs */
+    .mobile-tab-bar {
+      display: none;
+      background: #0f172a;
+      border-top: 1px solid #1e293b;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+    }
+
+    .mobile-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mobile-tab.active {
+      color: var(--accent);
+      border-top: 2px solid var(--accent);
+    }
+
+    @media (max-width: 992px) {
+      .panel-left, .panel-right {
+        display: none;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 200;
+      }
+      .panel.mobile-visible {
+        display: flex;
+      }
+      .mobile-tab-bar {
+        display: flex;
+      }
+      .app-main {
+        height: calc(100vh - 110px);
+      }
+      .search-box {
+        width: 140px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+          <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+          <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+          <line x1="12" y1="20" x2="12.01" y2="20"></line>
+        </svg>
+      </div>
+      <div>
+        <h1>BadvelNet Live <span class="badge-noc">NOC Badvel</span></h1>
+      </div>
+    </div>
+
+    <!-- Live Status Counts Ribbon -->
+    <div class="stats-ribbon">
+      <div class="stat-pill online" title="Active hosts online">
+        <span class="dot dot-green"></span>
+        <span>Online: <strong id="stat-online-count">0</strong></span>
+        <span id="stat-online-pct" style="opacity:0.8; font-size:0.75rem;">(0%)</span>
+      </div>
+      <div class="stat-pill offline" title="Hosts currently unreachable">
+        <span class="dot dot-red"></span>
+        <span>Offline: <strong id="stat-offline-count">0</strong></span>
+      </div>
+      <div class="stat-pill flapping" title="Unstable flapping connections">
+        <span class="dot dot-amber"></span>
+        <span>Flapping: <strong id="stat-flapping-count">0</strong></span>
+      </div>
+    </div>
+
+    <!-- Actions & User Profile -->
+    <div class="header-actions">
+      <input type="text" id="searchInput" class="search-box" placeholder="Search hosts...">
+
+      <button id="btnSimulateFlip" class="btn btn-sm" title="Simulate a random host status change to preview flight animation and sound">
+        ⚡ Demo Flip
+      </button>
+
+      <button id="btnSoundToggle" class="btn btn-sm" title="Toggle audio alert chime">
+        🔊 Sound: ON
+      </button>
+
+      <button id="btnPushSubscribe" class="btn btn-sm" title="Web Push Notifications">
+        🔔 Push
+      </button>
+
+      <button id="btnAdminUsers" class="btn btn-sm" style="display:none;" title="User Management">
+        👥 Users
+      </button>
+
+      <button id="btnSettings" class="btn btn-sm" title="Configuration">
+        ⚙️
+      </button>
+
+      <div id="userProfile" class="user-tag" style="display:none;">
+        <span id="userEmailTag">user@badvel</span>
+        <span id="userRoleTag" class="role-badge role-admin">ADMIN</span>
+        <button id="btnLogout" class="btn btn-sm" style="padding:2px 6px; margin-left:4px;">Logout</button>
+      </div>
+
+      <button id="btnLoginOpen" class="btn btn-primary btn-sm">Login</button>
+    </div>
+  </header>
+
+  <!-- Main 3-Panel Workspace -->
+  <main class="app-main">
+    <!-- Left Panel: Online Hosts -->
+    <section class="panel panel-left" id="panelOnline">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot dot-green"></span> Online Hosts
+        </div>
+        <span class="panel-count" id="badgeOnlineCount">0</span>
+      </div>
+      <div class="host-list" id="onlineHostsList">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Center Panel: Interactive Leaflet Map -->
+    <section class="map-container">
+      <div id="map"></div>
+      <div class="map-overlay-tools">
+        <button id="btnResetView" class="btn btn-sm" title="Reset Map to Badvel Center">
+          🎯 Badvel View
+        </button>
+        <button id="btnFitMarkers" class="btn btn-sm" title="Fit all host pins in view">
+          🔍 Fit All
+        </button>
+        <button id="btnToggleClusters" class="btn btn-sm" title="Toggle Marker Clustering (Like Image 2)">
+          🧩 Clusters: ON
+        </button>
+      </div>
+      <div id="coordInspector" class="coord-inspector" style="display:none;">
+        <span>📍 Clicked: <strong id="inspectCoords" style="color:#38bdf8; font-family:monospace;">0, 0</strong></span>
+        <button class="btn btn-sm" onclick="window.copyInspectCoords()" title="Copy coordinates for Google Sheets">📋 Copy</button>
+        <button class="modal-close" style="font-size:16px; margin-left:4px; line-height:1;" onclick="document.getElementById('coordInspector').style.display='none'">&times;</button>
+      </div>
+    </section>
+
+    <!-- Right Panel: Offline & Flapping Hosts -->
+    <section class="panel panel-right" id="panelOffline">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="dot dot-red"></span> Offline & Flapping
+        </div>
+        <span class="panel-count" id="badgeOfflineCount">0</span>
+      </div>
+      <div class="host-list" id="offlineHostsList">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Mobile Tab Navigation Bar -->
+  <nav class="mobile-tab-bar">
+    <button class="mobile-tab" data-target="panelOnline">🟢 Online</button>
+    <button class="mobile-tab active" data-target="map">🗺️ Map</button>
+    <button class="mobile-tab" data-target="panelOffline">🔴 Offline</button>
+  </nav>
+
+  <!-- 1. LOGIN MODAL -->
+  <div class="modal-backdrop" id="loginModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">NOC Operator Login</h3>
+        <button class="modal-close" id="btnCloseLogin">&times;</button>
+      </div>
+      <div class="error-banner" id="loginError"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="admin@badvelnet.local" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px;">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. HOST HISTORY & DETAILS MODAL -->
+  <div class="modal-backdrop" id="historyModal">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="historyHostName">Host Details</h3>
+          <p style="font-size:0.8rem; color:#9ca3af;" id="historyHostCoords">Lat: 0.000, Lon: 0.000</p>
+        </div>
+        <button class="modal-close" id="btnCloseHistory">&times;</button>
+      </div>
+      <div style="display:flex; gap:16px; margin-bottom:16px;">
+        <div style="flex:1; background:#1f2937; padding:12px; border-radius:8px;">
+          <div style="font-size:0.75rem; color:#94a3b8;">CURRENT STATUS</div>
+          <div style="font-size:1.1rem; font-weight:700; margin-top:4px;" id="historyStatusVal">Online</div>
+        </div>
+        <div style="flex:1; background:#1f2937; padding:12px; border-radius:8px;">
+          <div style="font-size:0.75rem; color:#94a3b8;">24H UPTIME</div>
+          <div style="font-size:1.1rem; font-weight:700; margin-top:4px; color:#10b981;" id="historyUptimeVal">99.8%</div>
+        </div>
+        <div style="flex:1; background:#1f2937; padding:12px; border-radius:8px;">
+          <div style="font-size:0.75rem; color:#94a3b8;">LAST SEEN</div>
+          <div style="font-size:0.85rem; font-weight:500; margin-top:6px;" id="historyLastSeenVal">Just now</div>
+        </div>
+      </div>
+      <h4 style="font-size:0.9rem; text-transform:uppercase; letter-spacing:0.5px; color:#cbd5e1;">Status History (Last 72 Hours)</h4>
+      <div class="timeline" id="historyTimeline">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ADMIN USER MANAGEMENT MODAL -->
+  <div class="modal-backdrop" id="usersModal">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">User Management (Admin)</h3>
+        <button class="modal-close" id="btnCloseUsers">&times;</button>
+      </div>
+      <div class="error-banner" id="userAdminError"></div>
+
+      <!-- Add User Form -->
+      <form id="createUserForm" style="background:#1f2937; padding:16px; border-radius:8px; margin-bottom:20px;">
+        <h4 style="font-size:0.85rem; margin-bottom:12px; color:#38bdf8;">CREATE NEW USER</h4>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group" style="margin-bottom:8px;">
+            <label>Email</label>
+            <input type="email" id="newEmail" class="form-input" placeholder="user@domain.com" required>
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label>Password</label>
+            <input type="password" id="newPassword" class="form-input" placeholder="••••••••" required>
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label>Role</label>
+            <select id="newRole" class="form-select">
+              <option value="viewer">Viewer (Restricted)</option>
+              <option value="operator">Operator (All hosts, no admin)</option>
+              <option value="admin">Admin (Full Access)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label>Allowed Hosts (Viewer only)</label>
+            <input type="text" id="newAllowedHosts" class="form-input" placeholder="ALL or bp.school, govt.hospital">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="margin-top:8px;">Create User</button>
+      </form>
+
+      <!-- Users List Table -->
+      <div style="max-height:240px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.8rem; text-align:left;">
+          <thead>
+            <tr style="border-bottom:1px solid #374151; color:#9ca3af;">
+              <th style="padding:6px;">Email</th>
+              <th style="padding:6px;">Role</th>
+              <th style="padding:6px;">Allowed Hosts</th>
+              <th style="padding:6px;">Last Login</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. SETTINGS MODAL -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Monitor Settings</h3>
+        <button class="modal-close" id="btnCloseSettings">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Google Apps Script Web App URL (/exec)</label>
+        <input type="url" id="settingApiUrl" class="form-input" placeholder="https://script.google.com/macros/s/.../exec">
+        <small style="color:#94a3b8; font-size:0.75rem;">Leave empty to use built-in Badvel demo simulation.</small>
+      </div>
+      <div class="form-group">
+        <label>OneSignal App ID</label>
+        <input type="text" id="settingOneSignalAppId" class="form-input" placeholder="e.g. b2f7f966-...">
+      </div>
+      <div class="form-group">
+        <label>Polling Interval</label>
+        <select id="settingPollInterval" class="form-select">
+          <option value="15000">15 Seconds</option>
+          <option value="30000" selected>30 Seconds (Default)</option>
+          <option value="60000">60 Seconds</option>
+        </select>
+      </div>
+      <button id="btnSaveSettings" class="btn btn-primary" style="width:100%; justify-content:center;">
+        Save Settings
+      </button>
+    </div>
+  </div>
+
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet MarkerCluster JS -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <script>
+    /**
+     * BadvelNet Live - Client Application Core
+     */
+
+    // --- State Management ---
+    const state = {
+      apiUrl: localStorage.getItem('badvelnet_api_url') || '',
+      oneSignalAppId: localStorage.getItem('badvelnet_onesignal_app_id') || '',
+      pollInterval: parseInt(localStorage.getItem('badvelnet_poll_interval') || '30000', 10),
+      soundEnabled: localStorage.getItem('badvelnet_sound') !== 'false',
+      token: localStorage.getItem('badvelnet_token') || '',
+      user: null, // { email, role, allowedHosts }
+      hosts: [],
+      prevHosts: {}, // hostName -> status for diffing
+      markers: {},   // hostName -> Leaflet Marker
+      selectedHost: null,
+      audioCtx: null,
+      isDemoMode: false,
+      flappingMap: {}, // hostName -> count
+      initialFitDone: false,
+      useClusters: true
+    };
+
+    // Badvel, AP Center Coordinates
+    const BADVEL_CENTER = [14.7398, 79.0575];
+
+    // Built-in Demo Hosts around Badvel, AP
+    const DEMO_HOSTS = [
+      { id: 'bp.school', name: 'Badvel Public School', lat: 14.735875, lon: 79.059524, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.8%' },
+      { id: 'rishi.clg', name: 'Rishi Valley Academy', lat: 14.738920, lon: 79.054110, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.5%' },
+      { id: 'govt.hospital', name: 'Badvel Area Hospital', lat: 14.741250, lon: 79.056800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.9%' },
+      { id: 'apollo.clinic', name: 'Apollo Clinic Center', lat: 14.744100, lon: 79.062200, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '98.7%' },
+      { id: 'muni.office', name: 'Badvel Municipality Office', lat: 14.739800, lon: 79.051400, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%' },
+      { id: 'tahsildar.off', name: 'Tahsildar Revenue Office', lat: 14.737100, lon: 79.049800, status: 'Offline', last_seen: null, uptime_24h: '88.4%' },
+      { id: 'police.stn', name: 'Badvel Town Police Station', lat: 14.742300, lon: 79.058100, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.9%' },
+      { id: 'substation.132kv', name: '132KV APTRANSCO Substation', lat: 14.748500, lon: 79.068900, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.4%' },
+      { id: 'sbi.main', name: 'State Bank of India Main Branch', lat: 14.736500, lon: 79.055600, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.2%' },
+      { id: 'union.bank', name: 'Union Bank Badvel', lat: 14.737900, lon: 79.057300, status: 'Offline', last_seen: null, uptime_24h: '91.2%' },
+      { id: 'rtc.bus', name: 'RTC Bus Station Badvel', lat: 14.734200, lon: 79.053100, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.0%' },
+      { id: 'market.complex', name: 'Badvel Daily Market Yard', lat: 14.740500, lon: 79.053800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '97.9%' },
+      { id: 'noc.tower1', name: 'NOC Main Tower - Rameswaram', lat: 14.746000, lon: 79.047500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%' },
+      { id: 'noc.tower2', name: 'NOC Secondary Relay - Porumamilla Rd', lat: 14.752100, lon: 79.064500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.6%' },
+      { id: 'krishna.theater', name: 'Krishna Cinema Junction Relay', lat: 14.732900, lon: 79.058800, status: 'Offline', last_seen: null, uptime_24h: '76.5%' }
+    ];
+
+    // --- Web Audio API Engine ---
+    function initAudio() {
+      if (!state.audioCtx) {
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtxClass) {
+          state.audioCtx = new AudioCtxClass();
+        }
+      }
+      if (state.audioCtx && state.audioCtx.state === 'suspended') {
+        state.audioCtx.resume();
+      }
+    }
+
+    function playStateSound(status) {
+      if (!state.soundEnabled) return;
+      initAudio();
+      if (!state.audioCtx) return;
+
+      const now = state.audioCtx.currentTime;
+
+      if (status.toLowerCase() === 'online') {
+        // Online: Rising tone sweep 660 Hz -> 990 Hz (Sine wave)
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, now);
+        osc.frequency.exponentialRampToValueAtTime(990, now + 0.35);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        osc.connect(gain);
+        gain.connect(state.audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else if (status.toLowerCase() === 'offline') {
+        // Offline: Falling tone sweep 400 Hz -> 220 Hz (Triangle wave)
+        const osc = state.audioCtx.createOscillator();
+        const gain = state.audioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 0.45);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+        osc.connect(gain);
+        gain.connect(state.audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.5);
+      }
+    }
+
+    // --- Web Crypto API SHA-256 ---
+    async function sha256Client(str) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // --- Map Initialization ---
+    let map = null;
+    let markerClusterGroup = null;
+
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView(BADVEL_CENTER, 14);
+
+      // 1. Badvel Streets (Clean View — Matches Image 2 Exactly)
+      // High-precision modern street vector map where Badvel Main Road & Kadapa-Porumamilla Road match GPS coordinates
+      const cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; CARTO'
+      });
+
+      // 2. Dark NOC (Esri Dark Gray Canvas + Reference)
+      const esriDark = L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+          maxNativeZoom: 16,
+          maxZoom: 19,
+          attribution: 'Tiles &copy; Esri'
+        }),
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+          maxNativeZoom: 16,
+          maxZoom: 19,
+          attribution: 'Esri Reference'
+        })
+      ]);
+
+      // 3. Satellite Imagery (Esri World Imagery) - Aerial photography down to building level
+      const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxNativeZoom: 18,
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri &mdash; World Imagery'
+      });
+
+      // 4. OpenStreetMap Standard (OSM France mirror - zero 403 blocks)
+      const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        subdomains: ['a', 'b', 'c'],
+        attribution: '&copy; OpenStreetMap France contributors'
+      });
+
+      // Add default clean streets layer (matches Image 2)
+      cartoPositron.addTo(map);
+
+      // Add Layer Switcher Control at top-right
+      const baseMaps = {
+        "🗺️ Badvel Streets (Like Image 2)": cartoPositron,
+        "🌙 Dark NOC": esriDark,
+        "🛰️ Satellite Imagery": esriSatellite,
+        "🌐 OpenStreetMap Standard": osmStandard
+      };
+
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+      L.control.attribution({ position: 'bottomright', prefix: 'Leaflet | &copy; CARTO &copy; OSM &copy; Esri' }).addTo(map);
+
+      // Map click inspector to see clicked coordinates and easily copy for Google Sheet
+      map.on('click', (e) => {
+        const cLat = e.latlng.lat.toFixed(6);
+        const cLon = e.latlng.lng.toFixed(6);
+        const inspector = document.getElementById('coordInspector');
+        if (inspector) {
+          inspector.style.display = 'flex';
+          document.getElementById('inspectCoords').textContent = `${cLat}, ${cLon}`;
+          window.lastClickedCoords = { lat: cLat, lon: cLon };
+        }
+      });
+
+      // Force recalculation of container size after render
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 350);
+      window.addEventListener('resize', () => {
+        if (map) map.invalidateSize();
+      });
+    }
+
+    window.copyInspectCoords = function() {
+      if (window.lastClickedCoords) {
+        const text = `${window.lastClickedCoords.lat}, ${window.lastClickedCoords.lon}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            alert(`Copied to clipboard:\n${text}\n\nYou can paste this directly into your Google Sheet Hosts tab!`);
+          }).catch(() => {
+            prompt('Copy coordinates:', text);
+          });
+        } else {
+          prompt('Copy coordinates:', text);
+        }
+      }
+    };
+
+    function createMarkerIcon(status) {
+      const isOnline = status.toLowerCase() === 'online';
+      const statusClass = isOnline ? 'online' : 'offline';
+      return L.divIcon({
+        className: 'leaflet-custom-marker',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -14],
+        html: `<div class="pin-circle ${statusClass}" id="pin-indicator"></div>`
+      });
+    }
+
+    function formatShortDate(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const hours = d.getHours().toString().padStart(2, '0');
+      const mins = d.getMinutes().toString().padStart(2, '0');
+      return `${day} ${month} : ${hours}:${mins}`;
+    }
+
+    function updateMapMarkers() {
+      if (!map) return;
+
+      // Clear existing cluster group or individual markers
+      if (markerClusterGroup) {
+        markerClusterGroup.clearLayers();
+        map.removeLayer(markerClusterGroup);
+        markerClusterGroup = null;
+      }
+      Object.values(state.markers).forEach(m => {
+        try { map.removeLayer(m); } catch (e) {}
+      });
+      state.markers = {};
+
+      if (state.useClusters && window.L && L.markerClusterGroup) {
+        markerClusterGroup = L.markerClusterGroup({
+          maxClusterRadius: 36,
+          spiderfyOnMaxZoom: true,
+          showCoverageOnHover: false,
+          zoomToBoundsOnClick: true
+        });
+      }
+
+      state.hosts.forEach(host => {
+        const isOnline = host.status.toLowerCase() === 'online';
+        const markerKey = host.name;
+        const lat = Number(host.lat);
+        const lon = Number(host.lon);
+
+        if (!isFinite(lat) || !isFinite(lon) || (lat === 0 && lon === 0)) {
+          return;
+        }
+
+        const marker = L.marker([lat, lon], {
+          icon: createMarkerIcon(host.status)
+        });
+
+        // Add persistent host pill labels matching Image 2
+        const dateStr = host.last_change ? formatShortDate(host.last_change) : (isOnline ? 'Online' : 'Offline');
+        if (!isOnline) {
+          // Offline host: red pill label attached (matches Image 2 e.g. "ashok1516 (01 Oct : 10:00)")
+          marker.bindTooltip(`
+            <div class="host-pill-label offline">
+              <span>● ${escapeHtml(host.name)}</span>
+              <span style="opacity:0.85; font-size:10px;">(${dateStr})</span>
+            </div>
+          `, {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -12],
+            className: 'host-label-tooltip'
+          });
+        } else {
+          // Online host: tooltip on hover
+          marker.bindTooltip(`
+            <div class="host-pill-label online">
+              <span>🔷 ${escapeHtml(host.name)}</span>
+            </div>
+          `, {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -12],
+            className: 'host-label-tooltip'
+          });
+        }
+
+        marker.bindPopup(`
+          <div style="font-family:sans-serif; min-width:200px;">
+            <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#111827;">${escapeHtml(host.name)}</div>
+            <div style="font-size:12px; margin-bottom:4px;">
+              Status: <strong style="color:${isOnline ? '#059669' : '#dc2626'}">${host.status}</strong>
+            </div>
+            <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">
+              24h Uptime: <strong>${host.uptime_24h || '100%'}</strong>
+            </div>
+            <div style="font-size:11px; color:#6b7280; margin-bottom:8px;">
+              Coords: ${lat.toFixed(6)}, ${lon.toFixed(6)}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+              <button onclick="window.openHistoryForHost('${escapeHtml(host.name)}')" 
+                style="background:#3b82f6; color:#fff; border:none; border-radius:4px; padding:5px 8px; font-size:11px; cursor:pointer; width:100%;">
+                📊 View 72h History
+              </button>
+              <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener noreferrer"
+                style="display:block; text-align:center; background:#059669; color:#fff; text-decoration:none; border-radius:4px; padding:5px 8px; font-size:11px; font-weight:600;">
+                📍 Verify on Google Maps ↗
+              </a>
+            </div>
+          </div>
+        `);
+
+        marker.on('click', () => {
+          selectHost(host.name);
+        });
+
+        state.markers[markerKey] = marker;
+
+        if (markerClusterGroup) {
+          markerClusterGroup.addLayer(marker);
+        } else {
+          marker.addTo(map);
+        }
+      });
+
+      if (markerClusterGroup) {
+        map.addLayer(markerClusterGroup);
+      }
+    }
+
+    // --- UI Renderers ---
+    function renderHostContainers() {
+      const onlineContainer = document.getElementById('onlineHostsList');
+      const offlineContainer = document.getElementById('offlineHostsList');
+      const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+
+      let onlineCount = 0;
+      let offlineCount = 0;
+      let flappingCount = 0;
+
+      let onlineHtml = '';
+      let offlineHtml = '';
+
+      state.hosts.forEach(host => {
+        const isOnline = host.status.toLowerCase() === 'online';
+        if (isOnline) onlineCount++; else offlineCount++;
+
+        // Filter search
+        if (query) {
+          const matchName = host.name.toLowerCase().includes(query);
+          const matchId = (host.id || '').toLowerCase().includes(query);
+          if (!matchName && !matchId) return;
+        }
+
+        const isFlapping = state.flappingMap[host.name] >= 3;
+        if (isFlapping) flappingCount++;
+
+        const cardStatusClass = isFlapping ? 'flapping-pill' : (isOnline ? 'online-pill' : 'offline-pill');
+        const badgeClass = isFlapping ? 'badge-status flapping' : (isOnline ? 'badge-status online' : 'badge-status offline');
+        const badgeLabel = isFlapping ? 'FLAPPING' : host.status;
+
+        const pillHtml = `
+          <div class="host-pill ${cardStatusClass} ${state.selectedHost === host.name ? 'active' : ''}" 
+               id="pill-${sanitizeId(host.name)}" 
+               onclick="window.focusHost('${escapeHtml(host.name)}')">
+            <div class="host-pill-top">
+              <span class="host-name">${escapeHtml(host.name)}</span>
+              <span class="host-uptime">${host.uptime_24h || '100%'}</span>
+            </div>
+            <div class="host-pill-bottom">
+              <div class="host-meta">
+                <span class="${badgeClass}">${badgeLabel}</span>
+                <span>${host.id || ''}</span>
+              </div>
+              <span>${formatLastSeen(host.last_seen)}</span>
+            </div>
+          </div>
+        `;
+
+        if (isOnline) {
+          onlineHtml += pillHtml;
+        } else {
+          offlineHtml += pillHtml;
+        }
+      });
+
+      onlineContainer.innerHTML = onlineHtml || '<div style="color:#6b7280; font-size:0.8rem; text-align:center; padding:20px;">No online hosts match filter</div>';
+      offlineContainer.innerHTML = offlineHtml || '<div style="color:#6b7280; font-size:0.8rem; text-align:center; padding:20px;">All hosts online!</div>';
+
+      // Update Ribbon Stats
+      const total = state.hosts.length;
+      const onlinePct = total > 0 ? Math.round((onlineCount / total) * 100) : 0;
+
+      document.getElementById('stat-online-count').textContent = onlineCount;
+      document.getElementById('stat-online-pct').textContent = `(${onlinePct}%)`;
+      document.getElementById('stat-offline-count').textContent = offlineCount;
+      document.getElementById('stat-flapping-count').textContent = flappingCount;
+
+      document.getElementById('badgeOnlineCount').textContent = onlineCount;
+      document.getElementById('badgeOfflineCount').textContent = offlineCount;
+    }
+
+    // --- Animated Transitions (Step 8.4 from Handoff) ---
+    function detectAndAnimateChanges(newHosts) {
+      const changes = [];
+
+      newHosts.forEach(h => {
+        const prev = state.prevHosts[h.name];
+        if (prev && prev.toLowerCase() !== h.status.toLowerCase()) {
+          changes.push({
+            name: h.name,
+            from: prev,
+            to: h.status,
+            lat: h.lat,
+            lon: h.lon
+          });
+        }
+      });
+
+      if (changes.length === 0) {
+        state.hosts = newHosts;
+        newHosts.forEach(h => { state.prevHosts[h.name] = h.status; });
+        renderHostContainers();
+        updateMapMarkers();
+
+        if (!state.initialFitDone && Object.keys(state.markers).length > 0) {
+          state.initialFitDone = true;
+          setTimeout(() => {
+            const markerList = Object.values(state.markers);
+            if (markerList.length > 0 && map) {
+              const group = new L.featureGroup(markerList);
+              map.fitBounds(group.getBounds().pad(0.1));
+            }
+          }, 350);
+        }
+        return;
+      }
+
+      // Execute staggered animations
+      changes.forEach((change, index) => {
+        setTimeout(() => {
+          animateHostFlip(change);
+        }, index * 500);
+      });
+
+      // Update state
+      state.hosts = newHosts;
+      newHosts.forEach(h => { state.prevHosts[h.name] = h.status; });
+      renderHostContainers();
+      updateMapMarkers();
+    }
+
+    function animateHostFlip(change) {
+      const pillId = `pill-${sanitizeId(change.name)}`;
+      const sourceElement = document.getElementById(pillId);
+      const marker = state.markers[change.name];
+
+      // 1. Web Audio API chime
+      playStateSound(change.to);
+
+      // 2. Pulse pin on map
+      if (marker && marker._icon) {
+        const pinElem = marker._icon.querySelector('#pin-indicator') || marker._icon;
+        pinElem.classList.remove('pin-pulse-active');
+        void pinElem.offsetWidth; // trigger reflow
+        pinElem.classList.add('pin-pulse-active');
+      }
+
+      // 3. Visual flying clone animation
+      if (sourceElement && map) {
+        const sourceRect = sourceElement.getBoundingClientRect();
+        const pinLatLng = L.latLng(change.lat, change.lon);
+        const pinPoint = map.latLngToContainerPoint(pinLatLng);
+        const mapRect = document.getElementById('map').getBoundingClientRect();
+        const targetScreenX = mapRect.left + pinPoint.x;
+        const targetScreenY = mapRect.top + pinPoint.y;
+
+        // Create flying clone
+        const clone = document.createElement('div');
+        clone.className = 'flight-clone';
+        clone.textContent = `${change.name} → ${change.to.toUpperCase()}`;
+        clone.style.left = `${sourceRect.left}px`;
+        clone.style.top = `${sourceRect.top}px`;
+        clone.style.width = `${sourceRect.width}px`;
+
+        if (change.to.toLowerCase() === 'online') {
+          clone.style.borderColor = '#10b981';
+          clone.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.6)';
+        } else {
+          clone.style.borderColor = '#ef4444';
+          clone.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.6)';
+        }
+
+        document.body.appendChild(clone);
+
+        // Stage 1: Fly to pin (400ms)
+        requestAnimationFrame(() => {
+          clone.style.transform = `translate(${targetScreenX - sourceRect.left}px, ${targetScreenY - sourceRect.top}px) scale(0.8)`;
+        });
+
+        // Stage 2: Fade & remove
+        setTimeout(() => {
+          clone.style.opacity = '0';
+          setTimeout(() => {
+            if (clone.parentNode) clone.parentNode.removeChild(clone);
+          }, 300);
+        }, 800);
+      }
+    }
+
+    // --- Interactive Map & Selection ---
+    window.focusHost = function(hostName) {
+      selectHost(hostName);
+      const host = state.hosts.find(h => h.name === hostName);
+      if (host && map) {
+        map.flyTo([host.lat, host.lon], 16, { duration: 1.0 });
+        const marker = state.markers[hostName];
+        if (marker) {
+          setTimeout(() => marker.openPopup(), 1000);
+        }
+      }
+    };
+
+    function selectHost(hostName) {
+      state.selectedHost = hostName;
+      renderHostContainers();
+    }
+
+    window.openHistoryForHost = function(hostName) {
+      const host = state.hosts.find(h => h.name === hostName);
+      if (!host) return;
+
+      document.getElementById('historyHostName').textContent = host.name;
+      document.getElementById('historyHostCoords').textContent = `Coordinates: ${host.lat.toFixed(6)}, ${host.lon.toFixed(6)} | ID: ${host.id}`;
+      document.getElementById('historyStatusVal').textContent = host.status;
+      document.getElementById('historyStatusVal').style.color = (host.status.toLowerCase() === 'online') ? '#10b981' : '#ef4444';
+      document.getElementById('historyUptimeVal').textContent = host.uptime_24h || '100.0%';
+      document.getElementById('historyLastSeenVal').textContent = formatLastSeen(host.last_seen);
+
+      loadHostHistory(host.name);
+      openModal('historyModal');
+    };
+
+    async function loadHostHistory(hostName) {
+      const timelineElem = document.getElementById('historyTimeline');
+      timelineElem.innerHTML = '<div style="color:#94a3b8; padding:10px;">Loading history...</div>';
+
+      if (!state.apiUrl || state.isDemoMode) {
+        // Mock sample history for demonstration
+        const now = new Date();
+        const mockEvents = [
+          { timestamp: new Date(now - 12 * 60000).toISOString(), status: 'Online', prevStatus: 'Offline' },
+          { timestamp: new Date(now - 2 * 3600000).toISOString(), status: 'Offline', prevStatus: 'Online' },
+          { timestamp: new Date(now - 28 * 3600000).toISOString(), status: 'Online', prevStatus: 'Offline' }
+        ];
+        renderTimeline(mockEvents);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${state.apiUrl}?action=history&token=${encodeURIComponent(state.token)}&host=${encodeURIComponent(hostName)}&hours=72`);
+        const data = await res.json();
+        if (data.ok && data.events) {
+          renderTimeline(data.events);
+        } else {
+          timelineElem.innerHTML = `<div style="color:#ef4444;">${data.error || 'Failed to load history'}</div>`;
+        }
+      } catch (err) {
+        timelineElem.innerHTML = `<div style="color:#ef4444;">Error fetching history: ${err.message}</div>`;
+      }
+    }
+
+    function renderTimeline(events) {
+      const timelineElem = document.getElementById('historyTimeline');
+      if (!events || events.length === 0) {
+        timelineElem.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem;">No state change events recorded in the last 72 hours. Perfect stability!</div>';
+        return;
+      }
+
+      timelineElem.innerHTML = events.map(e => {
+        const isOnline = e.status.toLowerCase() === 'online';
+        const dotClass = isOnline ? 'online' : 'offline';
+        const dateStr = new Date(e.timestamp).toLocaleString();
+        return `
+          <div class="timeline-item">
+            <span class="timeline-dot ${dotClass}"></span>
+            <div class="timeline-time">${dateStr}</div>
+            <div class="timeline-desc">Status changed from <strong>${escapeHtml(e.prevStatus || 'Unknown')}</strong> to <strong style="color:${isOnline ? '#10b981' : '#ef4444'}">${escapeHtml(e.status)}</strong></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- Authentication & Session Sync ---
+    async function restoreSession() {
+      if (!state.token) {
+        setUnauthenticatedUI();
+        loadDemoOrLive();
+        return;
+      }
+
+      if (!state.apiUrl) {
+        // Fallback demo session
+        state.user = { email: 'admin@badvelnet.local', role: 'admin', allowedHosts: 'ALL' };
+        setAuthenticatedUI();
+        loadDemoOrLive();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${state.apiUrl}?action=me&token=${encodeURIComponent(state.token)}`);
+        const data = await res.json();
+        if (data.ok) {
+          state.user = data;
+          setAuthenticatedUI();
+          loadDemoOrLive();
+        } else {
+          logout();
+        }
+      } catch (err) {
+        console.warn('Session restore network failure:', err);
+        setUnauthenticatedUI();
+        loadDemoOrLive();
+      }
+    }
+
+    async function handleLogin(email, plainPassword) {
+      const errBanner = document.getElementById('loginError');
+      errBanner.style.display = 'none';
+
+      // 1. Double-Hash: Compute client-side SHA-256(password)
+      const clientHash = await sha256Client(plainPassword);
+
+      if (!state.apiUrl) {
+        // Demo mode login
+        state.token = 'demo-token-12345';
+        state.user = { email: email, role: 'admin', allowedHosts: 'ALL' };
+        localStorage.setItem('badvelnet_token', state.token);
+        closeModal('loginModal');
+        setAuthenticatedUI();
+        return;
+      }
+
+      try {
+        // POST to Google Apps Script Web App (using text/plain to avoid CORS preflight)
+        const res = await fetch(state.apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'login',
+            email: email,
+            passwordHash: clientHash
+          })
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          state.token = data.token;
+          state.user = { email: data.email, role: data.role, allowedHosts: data.allowedHosts };
+          localStorage.setItem('badvelnet_token', data.token);
+          closeModal('loginModal');
+          setAuthenticatedUI();
+          pollHosts();
+        } else {
+          errBanner.textContent = data.error || 'Login failed';
+          errBanner.style.display = 'block';
+        }
+      } catch (err) {
+        errBanner.textContent = 'Server connection error: ' + err.message;
+        errBanner.style.display = 'block';
+      }
+    }
+
+    function logout() {
+      if (state.apiUrl && state.token) {
+        fetch(state.apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'logout', token: state.token })
+        }).catch(() => {});
+      }
+      state.token = '';
+      state.user = null;
+      localStorage.removeItem('badvelnet_token');
+      setUnauthenticatedUI();
+      loadDemoOrLive();
+    }
+
+    function setAuthenticatedUI() {
+      document.getElementById('btnLoginOpen').style.display = 'none';
+      const profile = document.getElementById('userProfile');
+      profile.style.display = 'flex';
+      document.getElementById('userEmailTag').textContent = state.user.email;
+
+      const roleBadge = document.getElementById('userRoleTag');
+      roleBadge.textContent = state.user.role.toUpperCase();
+      roleBadge.className = `role-badge role-${state.user.role.toLowerCase()}`;
+
+      if (state.user.role === 'admin') {
+        document.getElementById('btnAdminUsers').style.display = 'flex';
+      } else {
+        document.getElementById('btnAdminUsers').style.display = 'none';
+      }
+    }
+
+    function setUnauthenticatedUI() {
+      document.getElementById('btnLoginOpen').style.display = 'flex';
+      document.getElementById('userProfile').style.display = 'none';
+      document.getElementById('btnAdminUsers').style.display = 'none';
+    }
+
+    // --- Host Polling Engine ---
+    async function pollHosts() {
+      if (!state.apiUrl || !state.token) {
+        loadDemoOrLive();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${state.apiUrl}?action=hosts&token=${encodeURIComponent(state.token)}`);
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.hosts)) {
+          detectAndAnimateChanges(data.hosts);
+        } else if (data.error && data.error.includes('expired')) {
+          logout();
+        }
+      } catch (err) {
+        console.warn('Polling error:', err);
+      }
+    }
+
+    function loadDemoOrLive() {
+      if (!state.apiUrl) {
+        state.isDemoMode = true;
+        if (state.hosts.length === 0) {
+          state.hosts = JSON.parse(JSON.stringify(DEMO_HOSTS));
+          state.hosts.forEach(h => { state.prevHosts[h.name] = h.status; });
+        }
+        renderHostContainers();
+        updateMapMarkers();
+      } else if (state.token) {
+        state.isDemoMode = false;
+        pollHosts();
+      }
+    }
+
+    // --- Demo Flip Simulator ---
+    function triggerDemoFlip() {
+      initAudio();
+      if (state.hosts.length === 0) return;
+
+      // Pick a random host to flip
+      const randomIndex = Math.floor(Math.random() * state.hosts.length);
+      const target = JSON.parse(JSON.stringify(state.hosts[randomIndex]));
+      const newStatus = (target.status.toLowerCase() === 'online') ? 'Offline' : 'Online';
+
+      const updatedHosts = JSON.parse(JSON.stringify(state.hosts));
+      updatedHosts[randomIndex].status = newStatus;
+      updatedHosts[randomIndex].last_seen = (newStatus === 'Online') ? new Date().toISOString() : updatedHosts[randomIndex].last_seen;
+
+      detectAndAnimateChanges(updatedHosts);
+    }
+
+    // --- Admin User Management ---
+    async function loadAdminUsers() {
+      const tbody = document.getElementById('userTableBody');
+      tbody.innerHTML = '<tr><td colspan="4" style="padding:10px; color:#9ca3af;">Loading users...</td></tr>';
+
+      if (!state.apiUrl) {
+        tbody.innerHTML = `
+          <tr style="border-bottom:1px solid #1f2937;">
+            <td style="padding:6px;">admin@badvelnet.local</td>
+            <td style="padding:6px;"><span class="role-badge role-admin">ADMIN</span></td>
+            <td style="padding:6px;">ALL</td>
+            <td style="padding:6px;">Active now</td>
+          </tr>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch(`${state.apiUrl}?action=users&token=${encodeURIComponent(state.token)}`);
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.users)) {
+          tbody.innerHTML = data.users.map(u => `
+            <tr style="border-bottom:1px solid #1f2937;">
+              <td style="padding:6px;">${escapeHtml(u.email)}</td>
+              <td style="padding:6px;"><span class="role-badge role-${u.role}">${u.role.toUpperCase()}</span></td>
+              <td style="padding:6px; font-size:0.75rem; color:#94a3b8;">${escapeHtml(u.allowedHosts || 'ALL')}</td>
+              <td style="padding:6px; font-size:0.75rem; color:#94a3b8;">${u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}</td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" style="color:#ef4444; padding:10px;">${data.error || 'Failed to fetch users'}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#ef4444; padding:10px;">Network error: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function handleCreateUser(e) {
+      e.preventDefault();
+      const errBanner = document.getElementById('userAdminError');
+      errBanner.style.display = 'none';
+
+      const email = document.getElementById('newEmail').value.trim();
+      const plainPassword = document.getElementById('newPassword').value;
+      const role = document.getElementById('newRole').value;
+      const allowedHosts = document.getElementById('newAllowedHosts').value.trim() || 'ALL';
+
+      const clientHash = await sha256Client(plainPassword);
+
+      if (!state.apiUrl) {
+        alert(`Demo Mode: User ${email} created!`);
+        document.getElementById('createUserForm').reset();
+        return;
+      }
+
+      try {
+        const res = await fetch(state.apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'createUser',
+            token: state.token,
+            email: email,
+            passwordHash: clientHash,
+            role: role,
+            allowedHosts: allowedHosts
+          })
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById('createUserForm').reset();
+          loadAdminUsers();
+        } else {
+          errBanner.textContent = data.error || 'Failed to create user';
+          errBanner.style.display = 'block';
+        }
+      } catch (err) {
+        errBanner.textContent = 'Server error: ' + err.message;
+        errBanner.style.display = 'block';
+      }
+    }
+
+    // --- Modal Management ---
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.add('open');
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.remove('open');
+    }
+
+    // --- Helpers ---
+    function sanitizeId(str) {
+      return (str || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    function formatLastSeen(isoStr) {
+      if (!isoStr) return 'Never';
+      const date = new Date(isoStr);
+      const diffSec = Math.round((new Date() - date) / 1000);
+      if (diffSec < 60) return `${diffSec}s ago`;
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+      return `${Math.floor(diffSec / 3600)}h ago`;
+    }
+
+    // --- Event Listeners & Bootstrapping ---
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+
+      // Audio activation on first user click/touch
+      window.addEventListener('click', initAudio, { once: true });
+      window.addEventListener('keydown', initAudio, { once: true });
+
+      // Settings load
+      document.getElementById('settingApiUrl').value = state.apiUrl;
+      document.getElementById('settingOneSignalAppId').value = state.oneSignalAppId;
+      document.getElementById('settingPollInterval').value = state.pollInterval;
+
+      // Sound toggle
+      const btnSound = document.getElementById('btnSoundToggle');
+      btnSound.textContent = state.soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+      btnSound.addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        localStorage.setItem('badvelnet_sound', state.soundEnabled);
+        btnSound.textContent = state.soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+        if (state.soundEnabled) playStateSound('Online');
+      });
+
+      // Demo Flip Simulator button
+      document.getElementById('btnSimulateFlip').addEventListener('click', () => {
+        triggerDemoFlip();
+      });
+
+      // Search Filter
+      document.getElementById('searchInput').addEventListener('input', () => {
+        renderHostContainers();
+      });
+
+      // Map View Buttons
+      document.getElementById('btnResetView').addEventListener('click', () => {
+        if (map) map.flyTo(BADVEL_CENTER, 14);
+      });
+
+      document.getElementById('btnFitMarkers').addEventListener('click', () => {
+        const markerList = Object.values(state.markers);
+        if (markerList.length > 0 && map) {
+          const group = new L.featureGroup(markerList);
+          map.fitBounds(group.getBounds().pad(0.1));
+        }
+      });
+
+      // Cluster Toggle
+      const btnClusters = document.getElementById('btnToggleClusters');
+      if (btnClusters) {
+        btnClusters.addEventListener('click', () => {
+          state.useClusters = !state.useClusters;
+          btnClusters.textContent = state.useClusters ? '🧩 Clusters: ON' : '🧩 Clusters: OFF';
+          updateMapMarkers();
+        });
+      }
+
+      // Login Modal triggers
+      document.getElementById('btnLoginOpen').addEventListener('click', () => {
+        openModal('loginModal');
+      });
+      document.getElementById('btnCloseLogin').addEventListener('click', () => {
+        closeModal('loginModal');
+      });
+      document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleLogin(
+          document.getElementById('loginEmail').value.trim(),
+          document.getElementById('loginPassword').value
+        );
+      });
+      document.getElementById('btnLogout').addEventListener('click', logout);
+
+      // History Modal close
+      document.getElementById('btnCloseHistory').addEventListener('click', () => {
+        closeModal('historyModal');
+      });
+
+      // Users Modal
+      document.getElementById('btnAdminUsers').addEventListener('click', () => {
+        loadAdminUsers();
+        openModal('usersModal');
+      });
+      document.getElementById('btnCloseUsers').addEventListener('click', () => {
+        closeModal('usersModal');
+      });
+      document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
+
+      // Settings Modal
+      document.getElementById('btnSettings').addEventListener('click', () => {
+        openModal('settingsModal');
+      });
+      document.getElementById('btnCloseSettings').addEventListener('click', () => {
+        closeModal('settingsModal');
+      });
+      document.getElementById('btnSaveSettings').addEventListener('click', () => {
+        const newUrl = document.getElementById('settingApiUrl').value.trim();
+        const newAppId = document.getElementById('settingOneSignalAppId').value.trim();
+        const newPoll = parseInt(document.getElementById('settingPollInterval').value, 10);
+
+        localStorage.setItem('badvelnet_api_url', newUrl);
+        localStorage.setItem('badvelnet_onesignal_app_id', newAppId);
+        localStorage.setItem('badvelnet_poll_interval', newPoll);
+
+        state.apiUrl = newUrl;
+        state.oneSignalAppId = newAppId;
+        state.pollInterval = newPoll;
+
+        closeModal('settingsModal');
+        pollHosts();
+      });
+
+      // Push Notification setup
+      document.getElementById('btnPushSubscribe').addEventListener('click', async () => {
+        if (window.OneSignal) {
+          window.OneSignal.push(async () => {
+            await window.OneSignal.showSlidedownPrompt();
+            const playerId = await window.OneSignal.getUserId();
+            if (playerId && state.apiUrl && state.token) {
+              fetch(state.apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                  action: 'subscribe',
+                  token: state.token,
+                  playerId: playerId
+                })
+              });
+              alert('Subscribed for push notifications!');
+            }
+          });
+        } else {
+          alert('OneSignal SDK loaded. Ensure HTTPS or localhost is active.');
+        }
+      });
+
+      // Mobile Tabs
+      document.querySelectorAll('.mobile-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const targetId = tab.dataset.target;
+
+          document.getElementById('panelOnline').classList.remove('mobile-visible');
+          document.getElementById('panelOffline').classList.remove('mobile-visible');
+
+          if (targetId === 'panelOnline') {
+            document.getElementById('panelOnline').classList.add('mobile-visible');
+          } else if (targetId === 'panelOffline') {
+            document.getElementById('panelOffline').classList.add('mobile-visible');
+          }
+        });
+      });
+
+      // Close modal on backdrop click
+      document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('click', (e) => {
+          if (e.target === backdrop) backdrop.classList.remove('open');
+        });
+      });
+
+      // Initial restore & poll interval
+      restoreSession();
+      setInterval(pollHosts, state.pollInterval);
+    });
+  </script>
+</body>
+</html>
