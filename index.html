@@ -1228,12 +1228,11 @@
         attributionControl: false
       }).setView(BADVEL_CENTER, 14);
 
-      // 1. Badvel Streets (Clean View — Matches Image 2 Exactly)
-      // High-precision modern street vector map where Badvel Main Road & Kadapa-Porumamilla Road match GPS coordinates
-      const cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      // 1. OpenStreetMap Standard (High quality, zero API key required, zero 403 blocks)
+      const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; CARTO'
+        subdomains: ['a', 'b', 'c'],
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
       });
 
       // 2. Dark NOC (Esri Dark Gray Canvas + Reference)
@@ -1257,26 +1256,18 @@
         attribution: 'Tiles &copy; Esri &mdash; World Imagery'
       });
 
-      // 4. OpenStreetMap Standard (OSM France mirror - zero 403 blocks)
-      const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        subdomains: ['a', 'b', 'c'],
-        attribution: '&copy; OpenStreetMap France contributors'
-      });
-
-      // Add default clean streets layer (matches Image 2)
-      cartoPositron.addTo(map);
+      // Add OpenStreetMap Standard as the default basemap
+      osmStandard.addTo(map);
 
       // Add Layer Switcher Control at top-right
       const baseMaps = {
-        "🗺️ Badvel Streets (Like Image 2)": cartoPositron,
+        "🌐 OpenStreetMap Standard": osmStandard,
         "🌙 Dark NOC": esriDark,
-        "🛰️ Satellite Imagery": esriSatellite,
-        "🌐 OpenStreetMap Standard": osmStandard
+        "🛰️ Satellite Imagery": esriSatellite
       };
 
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
-      L.control.attribution({ position: 'bottomright', prefix: 'Leaflet | &copy; CARTO &copy; OSM &copy; Esri' }).addTo(map);
+      L.control.attribution({ position: 'bottomright', prefix: 'Leaflet | &copy; OpenStreetMap &copy; Esri' }).addTo(map);
 
       // Map click inspector to see clicked coordinates and easily copy for Google Sheet
       map.on('click', (e) => {
