@@ -132,6 +132,11 @@
       border-color: rgba(245, 158, 11, 0.4);
       color: #fbbf24;
     }
+    .stat-pill.staff {
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #60a5fa;
+      cursor: pointer;
+    }
 
     .dot {
       width: 8px;
@@ -141,6 +146,7 @@
     .dot-green { background: #10b981; box-shadow: 0 0 8px #10b981; }
     .dot-red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
     .dot-amber { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    .dot-blue { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
 
     /* Search & Header Controls */
     .header-actions {
@@ -526,6 +532,12 @@
       color: #ffffff;
       border: 1px solid #0369a1;
     }
+    .host-pill-label.staff {
+      background: #2563eb;
+      color: #ffffff;
+      border: 1px solid #1d4ed8;
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+    }
     .host-label-tooltip {
       background: transparent !important;
       border: none !important;
@@ -536,13 +548,20 @@
       display: none !important;
     }
 
+    .custom-map-pin {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: transparent !important;
+      border: none !important;
+    }
+
     .pin-circle {
-      width: 18px;
-      height: 18px;
       border-radius: 50%;
       border: 2px solid #ffffff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      transition: all 0.4s ease;
+      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+      display: inline-block;
     }
 
     .pin-circle.online {
@@ -825,6 +844,10 @@
         <span class="dot dot-amber"></span>
         <span>Flapping: <strong id="stat-flapping-count">0</strong></span>
       </div>
+      <div class="stat-pill staff" title="Staff field technicians live on map (Click to toggle)" onclick="window.toggleStaffLayer()">
+        <span class="dot dot-blue"></span>
+        <span>Staff: <strong id="stat-staff-count">0</strong></span>
+      </div>
     </div>
 
     <!-- Actions & User Profile -->
@@ -888,6 +911,9 @@
         </button>
         <button id="btnToggleClusters" class="btn btn-sm" title="Toggle Marker Clustering (Like Image 2)">
           🧩 Clusters: ON
+        </button>
+        <button id="btnToggleStaff" class="btn btn-sm" onclick="window.toggleStaffLayer()" title="Toggle Staff Field Technicians Live Layer">
+          👷 Staff: <span id="staff-pin-count">0</span>
         </button>
       </div>
       <div id="coordInspector" class="coord-inspector" style="display:none;">
@@ -1069,6 +1095,10 @@
      * BadvelNet Live - Client Application Core
      */
 
+    // Staff Tracking Sheet Config (NetMonitor live technicians)
+    const STAFF_SHEET_ID = '1CoA6KCXYX3HdQu6tB3mZzSi25yjRAtLMcEZ-OEt3mrY';
+    const STAFF_SHEET_GID = '1961806680';
+
     // --- State Management ---
     const state = {
       apiUrl: localStorage.getItem('badvelnet_api_url') || '',
@@ -1085,29 +1115,39 @@
       isDemoMode: false,
       flappingMap: {}, // hostName -> count
       initialFitDone: false,
-      useClusters: true
+      useClusters: true,
+      staffData: [],
+      staffMarkers: {},
+      staffLayerVisible: true,
+      statusChangeTimestamps: new Map()
     };
 
     // Badvel, AP Center Coordinates
     const BADVEL_CENTER = [14.7398, 79.0575];
 
-    // Built-in Demo Hosts around Badvel, AP
+    // Fallback demo staff field technicians (mirrors user's Staff sheet tab)
+    const DEMO_STAFF = [
+      { userId: '8902947183', name: 'Mahendra', lastUpdated: '02/10/2026 12:10', timestamp: '02/10/2026 12:10', lat: 14.7381086, lng: 79.070233, lon: 79.070233, status: 'Field', mapLink: 'https://maps.google.com/?q=14.7381086,79.070233' },
+      { userId: '2086811815', name: 'Mahesh', lastUpdated: '02/10/2026 12:45', timestamp: '02/10/2026 12:45', lat: 14.739462, lng: 79.05698, lon: 79.05698, status: 'Field', mapLink: 'https://maps.google.com/?q=14.739462,79.05698' }
+    ];
+
+    // Built-in Demo Hosts around Badvel, AP with full metadata and coordinates
     const DEMO_HOSTS = [
-      { id: 'bp.school', name: 'Badvel Public School', lat: 14.735875, lon: 79.059524, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.8%' },
-      { id: 'rishi.clg', name: 'Rishi Valley Academy', lat: 14.738920, lon: 79.054110, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.5%' },
-      { id: 'govt.hospital', name: 'Badvel Area Hospital', lat: 14.741250, lon: 79.056800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.9%' },
-      { id: 'apollo.clinic', name: 'Apollo Clinic Center', lat: 14.744100, lon: 79.062200, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '98.7%' },
-      { id: 'muni.office', name: 'Badvel Municipality Office', lat: 14.739800, lon: 79.051400, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%' },
-      { id: 'tahsildar.off', name: 'Tahsildar Revenue Office', lat: 14.737100, lon: 79.049800, status: 'Offline', last_seen: null, uptime_24h: '88.4%' },
-      { id: 'police.stn', name: 'Badvel Town Police Station', lat: 14.742300, lon: 79.058100, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.9%' },
-      { id: 'substation.132kv', name: '132KV APTRANSCO Substation', lat: 14.748500, lon: 79.068900, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.4%' },
-      { id: 'sbi.main', name: 'State Bank of India Main Branch', lat: 14.736500, lon: 79.055600, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.2%' },
-      { id: 'union.bank', name: 'Union Bank Badvel', lat: 14.737900, lon: 79.057300, status: 'Offline', last_seen: null, uptime_24h: '91.2%' },
-      { id: 'rtc.bus', name: 'RTC Bus Station Badvel', lat: 14.734200, lon: 79.053100, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.0%' },
-      { id: 'market.complex', name: 'Badvel Daily Market Yard', lat: 14.740500, lon: 79.053800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '97.9%' },
-      { id: 'noc.tower1', name: 'NOC Main Tower - Rameswaram', lat: 14.746000, lon: 79.047500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%' },
-      { id: 'noc.tower2', name: 'NOC Secondary Relay - Porumamilla Rd', lat: 14.752100, lon: 79.064500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.6%' },
-      { id: 'krishna.theater', name: 'Krishna Cinema Junction Relay', lat: 14.732900, lon: 79.058800, status: 'Offline', last_seen: null, uptime_24h: '76.5%' }
+      { id: 'bp.school', name: 'Badvel Public School', location: '14.735875, 79.059524', lat: 14.735875, lon: 79.059524, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.8%', ip: '10.10.14.2', clienttype: 'Educational', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'rishi.clg', name: 'Rishi Valley Academy', location: '14.738920, 79.054110', lat: 14.738920, lon: 79.054110, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.5%', ip: '10.10.14.5', clienttype: 'Commercial', is247: 'No', backuppower: 'Yes' },
+      { id: 'govt.hospital', name: 'Badvel Area Hospital', location: '14.741250, 79.056800', lat: 14.741250, lon: 79.056800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.9%', ip: '10.10.14.8', clienttype: 'Healthcare', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'apollo.clinic', name: 'Apollo Clinic Center', location: '14.744100, 79.062200', lat: 14.744100, lon: 79.062200, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '98.7%', ip: '10.10.14.12', clienttype: 'Commercial', is247: 'No', backuppower: 'No' },
+      { id: 'muni.office', name: 'Badvel Municipality Office', location: '14.739800, 79.051400', lat: 14.739800, lon: 79.051400, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%', ip: '10.10.14.15', clienttype: 'Government', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'tahsildar.off', name: 'Tahsildar Revenue Office', location: '14.737100, 79.049800', lat: 14.737100, lon: 79.049800, status: 'Offline', last_seen: null, uptime_24h: '88.4%', ip: '10.10.14.18', clienttype: 'Government', is247: 'No', backuppower: 'No' },
+      { id: 'police.stn', name: 'Badvel Town Police Station', location: '14.742300, 79.058100', lat: 14.742300, lon: 79.058100, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.9%', ip: '10.10.14.22', clienttype: 'Government', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'substation.132kv', name: '132KV APTRANSCO Substation', location: '14.748500, 79.068900', lat: 14.748500, lon: 79.068900, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.4%', ip: '10.10.14.26', clienttype: 'Infrastructure', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'sbi.main', name: 'State Bank of India Main Branch', location: '14.736500, 79.055600', lat: 14.736500, lon: 79.055600, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.2%', ip: '10.10.14.30', clienttype: 'Banking', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'union.bank', name: 'Union Bank Badvel', location: '14.737900, 79.057300', lat: 14.737900, lon: 79.057300, status: 'Offline', last_seen: null, uptime_24h: '91.2%', ip: '10.10.14.34', clienttype: 'Banking', is247: 'No', backuppower: 'No' },
+      { id: 'rtc.bus', name: 'RTC Bus Station Badvel', location: '14.734200, 79.053100', lat: 14.734200, lon: 79.053100, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.0%', ip: '10.10.14.40', clienttype: 'Transport', is247: 'No', backuppower: 'Yes' },
+      { id: 'market.complex', name: 'Badvel Daily Market Yard', location: '14.740500, 79.053800', lat: 14.740500, lon: 79.053800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '97.9%', ip: '10.10.14.44', clienttype: 'Commercial', is247: 'No', backuppower: 'No' },
+      { id: 'noc.tower1', name: 'NOC Main Tower - Rameswaram', location: '14.746000, 79.047500', lat: 14.746000, lon: 79.047500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%', ip: '10.10.1.1', clienttype: 'Infrastructure', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'noc.tower2', name: 'NOC Secondary Relay - Porumamilla Rd', location: '14.752100, 79.064500', lat: 14.752100, lon: 79.064500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.6%', ip: '10.10.1.2', clienttype: 'Infrastructure', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'krishna.theater', name: 'Krishna Cinema Junction Relay', location: '14.732900, 79.058800', lat: 14.732900, lon: 79.058800, status: 'Offline', last_seen: null, uptime_24h: '76.5%', ip: '10.10.14.50', clienttype: 'Entertainment', is247: 'No', backuppower: 'No' }
     ];
 
     // --- Web Audio API Engine ---
@@ -1274,21 +1314,87 @@
       }
     };
 
-    function createMarkerIcon(status) {
+    // --- Coordinate & Spatial Normalization ---
+    function normalizeLatLon(lat, lon) {
+      lat = parseFloat(lat);
+      lon = parseFloat(lon);
+      if (isNaN(lat) || isNaN(lon) || (lat === 0 && lon === 0)) return null;
+      // In Badvel/India, Latitude is ~14.7 N and Longitude is ~79.0 E
+      // If user swapped coordinates:
+      if (lat > 60 && lon < 40 && lon > 0) {
+        return { lat: lon, lon: lat };
+      }
+      return { lat, lon };
+    }
+
+    function parseCoords(item) {
+      if (!item) return null;
+      // 1. Check item.location (e.g. "14.735875, 79.059524")
+      if (item.location && String(item.location).includes(',')) {
+        const parts = String(item.location).split(',').map(s => parseFloat(s.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+          return normalizeLatLon(parts[0], parts[1]);
+        }
+      }
+      // 2. Check item.lat if it contains a comma
+      if (typeof item.lat === 'string' && item.lat.includes(',')) {
+        const parts = item.lat.split(',').map(s => parseFloat(s.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+          return normalizeLatLon(parts[0], parts[1]);
+        }
+      }
+      // 3. Fall back to lat and lon/lng
+      const lat = item.lat ?? item.latitude;
+      const lon = item.lon ?? item.lng ?? item.longitude;
+      return normalizeLatLon(lat, lon);
+    }
+
+    function isRecentlyChanged(hostName, lastChangeIso) {
+      if (hostName && state.statusChangeTimestamps && state.statusChangeTimestamps.has(hostName)) {
+        const elapsed = Date.now() - state.statusChangeTimestamps.get(hostName);
+        if (elapsed >= 0 && elapsed < (5 * 60 * 1000)) return true;
+      }
+      if (lastChangeIso) {
+        const d = new Date(lastChangeIso);
+        if (!isNaN(d.getTime())) {
+          const elapsed = Date.now() - d.getTime();
+          if (elapsed >= 0 && elapsed < (5 * 60 * 1000)) return true;
+        }
+      }
+      return false;
+    }
+
+    // --- High-Performance Custom Map Markers (from NetMonitor logic) ---
+    function createMarkerIcon(status, hasRecentChange) {
       const isOnline = status.toLowerCase() === 'online';
-      const statusClass = isOnline ? 'online' : 'offline';
+      const color = isOnline ? '#10b981' : '#ef4444';
+      const glowStyle = hasRecentChange
+        ? 'box-shadow: 0 0 12px 3px #3b82f6; border-color: #60a5fa;'
+        : `box-shadow: 0 0 6px ${color};`;
+
       return L.divIcon({
-        className: 'leaflet-custom-marker',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-        popupAnchor: [0, -14],
-        html: `<div class="pin-circle ${statusClass}" id="pin-indicator"></div>`
+        className: 'custom-map-pin',
+        iconSize: [13, 13],
+        iconAnchor: [6.5, 6.5],
+        popupAnchor: [0, -10],
+        html: `<div class="pin-circle ${isOnline ? 'online' : 'offline'}" style="background-color: ${color}; width: 13px; height: 13px; border-radius: 50%; border: 2px solid #ffffff; ${glowStyle}"></div>`
+      });
+    }
+
+    function createStaffMarkerIcon() {
+      return L.divIcon({
+        className: 'custom-map-pin',
+        iconSize: [15, 15],
+        iconAnchor: [7.5, 15],
+        popupAnchor: [0, -16],
+        html: `<div style="background-color:#3b82f6; width:15px; height:15px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); border:2px solid #ffffff; box-shadow:0 0 6px #3b82f6; display:flex; align-items:center; justify-content:center;"></div>`
       });
     }
 
     function formatShortDate(isoStr) {
       if (!isoStr) return '';
       const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return String(isoStr);
       const day = d.getDate().toString().padStart(2, '0');
       const month = d.toLocaleString('en-US', { month: 'short' });
       const hours = d.getHours().toString().padStart(2, '0');
@@ -1296,7 +1402,7 @@
       return `${day} ${month} : ${hours}:${mins}`;
     }
 
-    function updateMapMarkers() {
+    function updateMapMarkers(animateAndFit = false) {
       if (!map) return;
 
       // Clear existing cluster group or individual markers
@@ -1319,18 +1425,22 @@
         });
       }
 
+      const bounds = [];
+
       state.hosts.forEach(host => {
+        const coords = parseCoords(host);
+        if (!coords) return;
+        const lat = coords.lat;
+        const lon = coords.lon;
+
         const isOnline = host.status.toLowerCase() === 'online';
         const markerKey = host.name;
-        const lat = Number(host.lat);
-        const lon = Number(host.lon);
-
-        if (!isFinite(lat) || !isFinite(lon) || (lat === 0 && lon === 0)) {
-          return;
-        }
+        const hasRecentChange = isRecentlyChanged(host.name, host.last_change);
+        const is24x7 = String(host.is247 || '').toLowerCase() === 'yes';
+        const hasPower = String(host.backuppower || '').toLowerCase() === 'yes';
 
         const marker = L.marker([lat, lon], {
-          icon: createMarkerIcon(host.status)
+          icon: createMarkerIcon(host.status, hasRecentChange)
         });
 
         // Add persistent host pill labels matching Image 2
@@ -1363,18 +1473,25 @@
         }
 
         marker.bindPopup(`
-          <div style="font-family:sans-serif; min-width:200px;">
-            <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#111827;">${escapeHtml(host.name)}</div>
-            <div style="font-size:12px; margin-bottom:4px;">
-              Status: <strong style="color:${isOnline ? '#059669' : '#dc2626'}">${host.status}</strong>
+          <div style="font-family:sans-serif; min-width:210px; font-size:12px; color:#111827;">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+              <span>${escapeHtml(host.name)}</span>
+              ${is24x7 ? '<span style="font-size:9px; background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:3px; border:1px solid #fcd34d;">24/7</span>' : ''}
+              ${hasRecentChange ? '<span style="font-size:9px; background:#dbeafe; color:#1e40af; padding:1px 4px; border-radius:3px; border:1px solid #93c5fd;">⚡ Changed &lt;5m</span>' : ''}
             </div>
-            <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">
+            <div style="margin-bottom:3px;">
+              Status: <strong style="color:${isOnline ? '#059669' : '#dc2626'}">${host.status}</strong>
+              ${hasPower ? '<span style="color:#059669; font-size:11px; margin-left:6px;">🔋 Battery Backup</span>' : ''}
+            </div>
+            ${host.ip ? `<div style="font-family:monospace; color:#2563eb; font-size:11px; margin-bottom:2px;">IP: ${escapeHtml(host.ip)}</div>` : ''}
+            ${(host.clienttype || host.schedulerule) ? `<div style="color:#6b7280; font-size:11px; margin-bottom:2px;">Type: ${escapeHtml(host.clienttype || 'Standard')} • Sched: ${escapeHtml(host.schedulerule || '-')}</div>` : ''}
+            <div style="font-size:11px; color:#6b7280; margin-bottom:2px;">
               24h Uptime: <strong>${host.uptime_24h || '100%'}</strong>
             </div>
-            <div style="font-size:11px; color:#6b7280; margin-bottom:8px;">
+            <div style="font-size:10px; color:#9ca3af; margin-bottom:8px;">
               Coords: ${lat.toFixed(6)}, ${lon.toFixed(6)}
             </div>
-            <div style="display:flex; flex-direction:column; gap:5px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
               <button onclick="window.openHistoryForHost('${escapeHtml(host.name)}')" 
                 style="background:#3b82f6; color:#fff; border:none; border-radius:4px; padding:5px 8px; font-size:11px; cursor:pointer; width:100%;">
                 📊 View 72h History
@@ -1392,6 +1509,7 @@
         });
 
         state.markers[markerKey] = marker;
+        bounds.push([lat, lon]);
 
         if (markerClusterGroup) {
           markerClusterGroup.addLayer(marker);
@@ -1403,7 +1521,145 @@
       if (markerClusterGroup) {
         map.addLayer(markerClusterGroup);
       }
+
+      // Auto-fit map bounds smoothly on first load or request
+      if (bounds.length > 0 && (animateAndFit || !state.initialFitDone)) {
+        if (bounds.length === 1) {
+          map.flyTo(bounds[0], 16, { animate: true, duration: 1 });
+        } else {
+          map.flyToBounds(bounds, { padding: [35, 35], animate: true, duration: 1 });
+        }
+        state.initialFitDone = true;
+      }
     }
+
+    // --- Staff Field Technicians Live Layer (Same Spreadsheet Staff Tab) ---
+    async function fetchStaffData() {
+      // 1. First priority: Fetch via Apps Script Web App (?action=staff) directly from Staff tab in same sheet
+      if (state.apiUrl) {
+        try {
+          const tokenParam = state.token ? `&token=${encodeURIComponent(state.token)}` : '';
+          const res = await fetch(`${state.apiUrl}?action=staff${tokenParam}`);
+          const data = await res.json();
+          if (data.ok && Array.isArray(data.staff) && data.staff.length > 0) {
+            state.staffData = data.staff;
+            renderStaffMarkers();
+            return;
+          }
+        } catch (apiErr) {
+          console.warn('Apps Script staff API error, trying GViz fallback:', apiErr.message);
+        }
+      }
+
+      // 2. Secondary: Fetch via Google Visualization API with sheet=Staff or GID
+      try {
+        const url = `https://docs.google.com/spreadsheets/d/${STAFF_SHEET_ID}/gviz/tq?tqx=out:json&sheet=Staff`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const text = await response.text();
+          const jsonStart = text.indexOf('{');
+          const jsonEnd = text.lastIndexOf('}');
+          if (jsonStart !== -1 && jsonEnd !== -1) {
+            const parsed = JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+            if (parsed.table && parsed.table.rows && parsed.table.rows.length > 0) {
+              state.staffData = parsed.table.rows.map(row => {
+                const c = row.c || [];
+                const val = (i) => (c[i] && c[i].v !== undefined && c[i].v !== null) ? c[i].v : null;
+                return {
+                  userId: val(0),
+                  name: val(1),
+                  lastUpdated: val(2),
+                  timestamp: val(2),
+                  lat: parseFloat(val(3)),
+                  lng: parseFloat(val(4)),
+                  status: val(5),
+                  mapLink: val(6)
+                };
+              }).filter(s => !isNaN(s.lat) && !isNaN(s.lng));
+
+              renderStaffMarkers();
+              return;
+            }
+          }
+        }
+      } catch (gvizErr) {
+        // Continue to fallback
+      }
+
+      // 3. Fallback: Use live records from the user's Staff tab
+      if (state.staffData.length === 0) {
+        state.staffData = JSON.parse(JSON.stringify(DEMO_STAFF));
+        renderStaffMarkers();
+      }
+    }
+
+    function renderStaffMarkers() {
+      if (!map) return;
+      Object.values(state.staffMarkers).forEach(m => {
+        try { map.removeLayer(m); } catch (e) {}
+      });
+      state.staffMarkers = {};
+
+      if (state.staffLayerVisible) {
+        state.staffData.forEach(s => {
+          const coords = normalizeLatLon(s.lat, s.lng ?? s.lon);
+          if (!coords) return;
+
+          const marker = L.marker([coords.lat, coords.lon], { icon: createStaffMarkerIcon() });
+          const timeText = s.timestamp || s.lastUpdated || 'Live';
+
+          marker.bindTooltip(`
+            <div class="host-pill-label staff">
+              <span>👷 ${escapeHtml(s.name || 'Staff')}</span>
+              <span style="opacity:0.85; font-size:10px;">(${timeText})</span>
+            </div>
+          `, {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -14],
+            className: 'host-label-tooltip'
+          });
+
+          marker.bindPopup(`
+            <div style="font-family: sans-serif; font-size: 11px; color: #111; min-width: 175px;">
+              <div style="font-weight:700; font-size:13px; color:#1e3a8a; margin-bottom:3px;">
+                👷 ${escapeHtml(s.name || 'Staff')} <span style="color:#3b82f6; font-size:11px;">(Technician)</span>
+              </div>
+              ${s.userId ? `<div style="color:#64748b; font-size:10px; margin-bottom:2px;">User ID: <strong>${escapeHtml(s.userId)}</strong></div>` : ''}
+              ${s.status ? `<div>Status: <strong>${escapeHtml(s.status)}</strong></div>` : ''}
+              <div>Updated: <strong>${escapeHtml(timeText)}</strong></div>
+              <div style="color:#6b7280; font-size:10px; margin-bottom:6px;">Coords: ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}</div>
+              ${s.mapLink ? `
+                <div>
+                  <a href="${escapeHtml(s.mapLink)}" target="_blank" rel="noopener noreferrer"
+                     style="display:block; text-align:center; background:#2563eb; color:#fff; text-decoration:none; border-radius:4px; padding:4px 6px; font-size:10px; font-weight:600;">
+                    📍 Open in Google Maps ↗
+                  </a>
+                </div>
+              ` : ''}
+            </div>
+          `);
+
+          marker.addTo(map);
+          state.staffMarkers[s.userId || s.name] = marker;
+        });
+      }
+
+      const staffCountElem = document.getElementById('staff-pin-count');
+      if (staffCountElem) staffCountElem.textContent = state.staffData.length;
+      const staffRibbonElem = document.getElementById('stat-staff-count');
+      if (staffRibbonElem) staffRibbonElem.textContent = state.staffData.length;
+    }
+
+    window.toggleStaffLayer = function() {
+      state.staffLayerVisible = !state.staffLayerVisible;
+      const btn = document.getElementById('btnToggleStaff');
+      if (btn) {
+        btn.style.opacity = state.staffLayerVisible ? '1' : '0.5';
+        btn.classList.toggle('active', state.staffLayerVisible);
+      }
+      renderStaffMarkers();
+    };
 
     // --- UI Renderers ---
     function renderHostContainers() {
@@ -1480,16 +1736,19 @@
     // --- Animated Transitions (Step 8.4 from Handoff) ---
     function detectAndAnimateChanges(newHosts) {
       const changes = [];
+      const now = Date.now();
 
       newHosts.forEach(h => {
         const prev = state.prevHosts[h.name];
         if (prev && prev.toLowerCase() !== h.status.toLowerCase()) {
+          state.statusChangeTimestamps.set(h.name, now);
+          const coords = parseCoords(h);
           changes.push({
             name: h.name,
             from: prev,
             to: h.status,
-            lat: h.lat,
-            lon: h.lon
+            lat: coords ? coords.lat : Number(h.lat),
+            lon: coords ? coords.lon : Number(h.lon)
           });
         }
       });
@@ -1499,17 +1758,6 @@
         newHosts.forEach(h => { state.prevHosts[h.name] = h.status; });
         renderHostContainers();
         updateMapMarkers();
-
-        if (!state.initialFitDone && Object.keys(state.markers).length > 0) {
-          state.initialFitDone = true;
-          setTimeout(() => {
-            const markerList = Object.values(state.markers);
-            if (markerList.length > 0 && map) {
-              const group = new L.featureGroup(markerList);
-              map.fitBounds(group.getBounds().pad(0.1));
-            }
-          }, 350);
-        }
         return;
       }
 
@@ -1590,10 +1838,13 @@
       selectHost(hostName);
       const host = state.hosts.find(h => h.name === hostName);
       if (host && map) {
-        map.flyTo([host.lat, host.lon], 16, { duration: 1.0 });
-        const marker = state.markers[hostName];
-        if (marker) {
-          setTimeout(() => marker.openPopup(), 1000);
+        const coords = parseCoords(host);
+        if (coords) {
+          map.flyTo([coords.lat, coords.lon], 16, { duration: 1.0 });
+          const marker = state.markers[hostName];
+          if (marker) {
+            setTimeout(() => marker.openPopup(), 1000);
+          }
         }
       }
     };
@@ -1607,8 +1858,9 @@
       const host = state.hosts.find(h => h.name === hostName);
       if (!host) return;
 
+      const coords = parseCoords(host) || { lat: 0, lon: 0 };
       document.getElementById('historyHostName').textContent = host.name;
-      document.getElementById('historyHostCoords').textContent = `Coordinates: ${host.lat.toFixed(6)}, ${host.lon.toFixed(6)} | ID: ${host.id}`;
+      document.getElementById('historyHostCoords').textContent = `Coordinates: ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)} | ID: ${host.id}`;
       document.getElementById('historyStatusVal').textContent = host.status;
       document.getElementById('historyStatusVal').style.color = (host.status.toLowerCase() === 'online') ? '#10b981' : '#ef4444';
       document.getElementById('historyUptimeVal').textContent = host.uptime_24h || '100.0%';
@@ -1788,6 +2040,7 @@
 
     // --- Host Polling Engine ---
     async function pollHosts() {
+      fetchStaffData();
       if (!state.apiUrl || !state.token) {
         loadDemoOrLive();
         return;
@@ -1991,7 +2244,10 @@
       });
 
       document.getElementById('btnFitMarkers').addEventListener('click', () => {
-        const markerList = Object.values(state.markers);
+        const markerList = [
+          ...Object.values(state.markers),
+          ...(state.staffLayerVisible ? Object.values(state.staffMarkers) : [])
+        ];
         if (markerList.length > 0 && map) {
           const group = new L.featureGroup(markerList);
           map.fitBounds(group.getBounds().pad(0.1));
@@ -2113,6 +2369,7 @@
       });
 
       // Initial restore & poll interval
+      fetchStaffData();
       restoreSession();
       setInterval(pollHosts, state.pollInterval);
     });
