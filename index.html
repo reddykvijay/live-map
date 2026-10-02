@@ -132,10 +132,23 @@
       border-color: rgba(245, 158, 11, 0.4);
       color: #fbbf24;
     }
+    .stat-pill.outage {
+      border-color: rgba(239, 68, 68, 0.7);
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      cursor: pointer;
+    }
     .stat-pill.staff {
       border-color: rgba(59, 130, 246, 0.4);
       color: #60a5fa;
       cursor: pointer;
+    }
+    .pulse-outage {
+      animation: pulseOutageDot 1s infinite alternate ease-in-out;
+    }
+    @keyframes pulseOutageDot {
+      from { transform: scale(0.9); opacity: 0.7; }
+      to { transform: scale(1.3); opacity: 1; box-shadow: 0 0 10px #ef4444; }
     }
 
     .dot {
@@ -221,6 +234,146 @@
     .role-admin { background: #7c3aed; color: #fff; }
     .role-operator { background: #0284c7; color: #fff; }
     .role-viewer { background: #475569; color: #cbd5e1; }
+
+    /* Ongoing Outages Alert Banner */
+    .noc-outages-banner {
+      background: linear-gradient(90deg, #991b1b, #7f1d1d);
+      color: #fef2f2;
+      border-bottom: 1px solid #b91c1c;
+      padding: 7px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+      animation: bannerGlow 2.5s infinite alternate ease-in-out;
+    }
+    @keyframes bannerGlow {
+      from { box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2); }
+      to { box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5); }
+    }
+    .noc-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .noc-banner-title {
+      color: #fca5a5;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .btn-banner-action {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      transition: background 0.2s;
+    }
+    .noc-outages-banner:hover .btn-banner-action {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    /* Outage Incident Cards in Modal */
+    .outage-incident-card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-left: 4px solid #ef4444;
+      border-radius: 8px;
+      padding: 12px 14px;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .outage-incident-card:hover {
+      border-color: #ef4444;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .outage-incident-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .outage-incident-entity {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .outage-severity-pill {
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .outage-severity-pill.high,
+    .outage-severity-pill.critical {
+      background: #991b1b;
+      color: #fee2e2;
+      border: 1px solid #dc2626;
+    }
+    .outage-severity-pill.medium {
+      background: #92400e;
+      color: #fef3c7;
+      border: 1px solid #d97706;
+    }
+    .outage-incident-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #374151;
+    }
+    .outage-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 10px 0;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .outage-detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .outage-detail-label {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .outage-detail-val {
+      font-size: 0.8rem;
+      color: #f3f4f6;
+      font-weight: 600;
+    }
+    .outage-assessment-box {
+      background: rgba(220, 38, 38, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-top: 8px;
+    }
+    .host-pill.outage-active {
+      border: 1px solid #ef4444 !important;
+      border-left: 4px solid #dc2626 !important;
+      background: rgba(220, 38, 38, 0.08) !important;
+      box-shadow: 0 0 10px rgba(220, 38, 38, 0.2);
+    }
+    .host-pill-label.offline.outage {
+      background: #7f1d1d !important;
+      border: 1px solid #ef4444 !important;
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.6) !important;
+    }
 
     /* 3-Panel Main Layout */
     .app-main {
@@ -844,6 +997,10 @@
         <span class="dot dot-amber"></span>
         <span>Flapping: <strong id="stat-flapping-count">0</strong></span>
       </div>
+      <div class="stat-pill outage" id="statOutagesPill" title="Ongoing Active Outages from NOC sheet (Click to view details)" onclick="window.openOutagesModal()" style="display:none; cursor:pointer;">
+        <span class="dot dot-red pulse-outage"></span>
+        <span>Outages: <strong id="stat-outages-count">0</strong></span>
+      </div>
       <div class="stat-pill staff" title="Staff field technicians live on map (Click to toggle)" onclick="window.toggleStaffLayer()">
         <span class="dot dot-blue"></span>
         <span>Staff: <strong id="stat-staff-count">0</strong></span>
@@ -853,6 +1010,10 @@
     <!-- Actions & User Profile -->
     <div class="header-actions">
       <input type="text" id="searchInput" class="search-box" placeholder="Search hosts...">
+
+      <button id="btnOpenOutages" class="btn btn-sm" onclick="window.openOutagesModal()" title="View Ongoing Network Outages" style="border-color: rgba(239, 68, 68, 0.5); color: #f87171;">
+        🚨 Outages <span id="headerOutageBadge" style="display:none; background:#ef4444; color:#fff; font-size:10px; padding:1px 5px; border-radius:10px; margin-left:2px;">0</span>
+      </button>
 
       <button id="btnSimulateFlip" class="btn btn-sm" title="Simulate a random host status change to preview flight animation and sound">
         ⚡ Demo Flip
@@ -883,6 +1044,18 @@
       <button id="btnLoginOpen" class="btn btn-primary btn-sm">Login</button>
     </div>
   </header>
+
+  <!-- Ongoing Outages Alert Banner -->
+  <div id="nocOutagesAlertBanner" class="noc-outages-banner" style="display:none;" onclick="window.openOutagesModal()">
+    <div class="noc-banner-left">
+      <span class="pulse-icon">🚨</span>
+      <span class="noc-banner-title">ONGOING OUTAGE ALERT:</span>
+      <span id="nocOutagesSummaryText">Active high-severity outages reported in Badvel zones</span>
+    </div>
+    <div class="noc-banner-right">
+      <span class="btn-banner-action">View Details &rarr;</span>
+    </div>
+  </div>
 
   <!-- Main 3-Panel Workspace -->
   <main class="app-main">
@@ -1085,6 +1258,26 @@
     </div>
   </div>
 
+  <!-- 5. ONGOING OUTAGES MODAL -->
+  <div class="modal-backdrop" id="outagesModal">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="display:flex; align-items:center; gap:8px;">
+            <span>🚨 Ongoing Network Outages</span>
+            <span class="badge-status offline" id="outagesModalCount">0 Active</span>
+          </h3>
+          <p style="font-size:0.8rem; color:#9ca3af; margin-top:2px;">Live incident telemetry from NOC Ongoing_Outages sheet</p>
+        </div>
+        <button class="modal-close" id="btnCloseOutages">&times;</button>
+      </div>
+
+      <div style="max-height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px;" id="outagesModalList">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
   <!-- Leaflet JavaScript -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <!-- Leaflet MarkerCluster JS -->
@@ -1119,11 +1312,47 @@
       staffData: [],
       staffMarkers: {},
       staffLayerVisible: true,
-      statusChangeTimestamps: new Map()
+      statusChangeTimestamps: new Map(),
+      outages: [],
+      outageMap: {}
     };
 
     // Badvel, AP Center Coordinates
     const BADVEL_CENTER = [14.7398, 79.0575];
+
+    // Fallback demo ongoing outages (mirrors user's Ongoing_Outages sheet tab)
+    const DEMO_OUTAGES = [
+      {
+        startTime: '2026-10-02 13:07:26',
+        severity: 'HIGH',
+        outageType: 'OFFICE_BACKUP_DISCONNECT',
+        zone: 'Badvel Central / Market & Bus Stand',
+        entity: 'jesus',
+        duration: 'Just now',
+        status: 'ACTIVE',
+        impact: 'BUSINESS UNUSUAL OUTAGE: Office client [jesus] with battery backup went offline'
+      },
+      {
+        startTime: '2026-10-01 17:07:26',
+        severity: 'HIGH',
+        outageType: 'OFFICE_BACKUP_DISCONNECT',
+        zone: 'Badvel South / Mydukur Road',
+        entity: 'apshcl.el',
+        duration: 'Just now',
+        status: 'ACTIVE',
+        impact: 'BUSINESS UNUSUAL OUTAGE: Office client [apshcl.el] with battery backup went offline'
+      },
+      {
+        startTime: '2026-10-01 16:11:26',
+        severity: 'HIGH',
+        outageType: 'OFFICE_BACKUP_DISCONNECT',
+        zone: 'Badvel South / Mydukur Road',
+        entity: 'Mviofficebadvel',
+        duration: 'Just now',
+        status: 'ACTIVE',
+        impact: 'BUSINESS UNUSUAL OUTAGE: Office client [Mviofficebadvel] with battery backup went offline'
+      }
+    ];
 
     // Fallback demo staff field technicians (mirrors user's Staff sheet tab)
     const DEMO_STAFF = [
@@ -1147,7 +1376,11 @@
       { id: 'market.complex', name: 'Badvel Daily Market Yard', location: '14.740500, 79.053800', lat: 14.740500, lon: 79.053800, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '97.9%', ip: '10.10.14.44', clienttype: 'Commercial', is247: 'No', backuppower: 'No' },
       { id: 'noc.tower1', name: 'NOC Main Tower - Rameswaram', location: '14.746000, 79.047500', lat: 14.746000, lon: 79.047500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '100.0%', ip: '10.10.1.1', clienttype: 'Infrastructure', is247: 'Yes', backuppower: 'Yes' },
       { id: 'noc.tower2', name: 'NOC Secondary Relay - Porumamilla Rd', location: '14.752100, 79.064500', lat: 14.752100, lon: 79.064500, status: 'Online', last_seen: new Date().toISOString(), uptime_24h: '99.6%', ip: '10.10.1.2', clienttype: 'Infrastructure', is247: 'Yes', backuppower: 'Yes' },
-      { id: 'krishna.theater', name: 'Krishna Cinema Junction Relay', location: '14.732900, 79.058800', lat: 14.732900, lon: 79.058800, status: 'Offline', last_seen: null, uptime_24h: '76.5%', ip: '10.10.14.50', clienttype: 'Entertainment', is247: 'No', backuppower: 'No' }
+      { id: 'krishna.theater', name: 'Krishna Cinema Junction Relay', location: '14.732900, 79.058800', lat: 14.732900, lon: 79.058800, status: 'Offline', last_seen: null, uptime_24h: '76.5%', ip: '10.10.14.50', clienttype: 'Entertainment', is247: 'No', backuppower: 'No' },
+      // Matching ongoing outage clients from Ongoing_Outages sheet:
+      { id: 'jesus', name: 'jesus', location: '14.739200, 79.055200', lat: 14.739200, lon: 79.055200, status: 'Offline', last_seen: null, uptime_24h: '84.2%', ip: '10.10.14.77', clienttype: 'Commercial', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'apshcl.el', name: 'apshcl.el', location: '14.731500, 79.052800', lat: 14.731500, lon: 79.052800, status: 'Offline', last_seen: null, uptime_24h: '78.5%', ip: '10.10.14.88', clienttype: 'Government', is247: 'Yes', backuppower: 'Yes' },
+      { id: 'Mviofficebadvel', name: 'Mviofficebadvel', location: '14.730200, 79.051400', lat: 14.730200, lon: 79.051400, status: 'Offline', last_seen: null, uptime_24h: '79.1%', ip: '10.10.14.99', clienttype: 'Government', is247: 'Yes', backuppower: 'Yes' }
     ];
 
     // --- Web Audio API Engine ---
@@ -1356,19 +1589,22 @@
     }
 
     // --- High-Performance Custom Map Markers (from NetMonitor logic) ---
-    function createMarkerIcon(status, hasRecentChange) {
+    function createMarkerIcon(status, hasRecentChange, isOutage = false) {
       const isOnline = status.toLowerCase() === 'online';
       const color = isOnline ? '#10b981' : '#ef4444';
-      const glowStyle = hasRecentChange
-        ? 'box-shadow: 0 0 12px 3px #3b82f6; border-color: #60a5fa;'
-        : `box-shadow: 0 0 6px ${color};`;
+      let glowStyle = `box-shadow: 0 0 6px ${color};`;
+      if (isOutage) {
+        glowStyle = 'box-shadow: 0 0 12px 3px #dc2626; border-color: #fee2e2;';
+      } else if (hasRecentChange) {
+        glowStyle = 'box-shadow: 0 0 12px 3px #3b82f6; border-color: #60a5fa;';
+      }
 
       return L.divIcon({
         className: 'custom-map-pin',
         iconSize: [13, 13],
         iconAnchor: [6.5, 6.5],
         popupAnchor: [0, -10],
-        html: `<div class="pin-circle ${isOnline ? 'online' : 'offline'}" style="background-color: ${color}; width: 13px; height: 13px; border-radius: 50%; border: 2px solid #ffffff; ${glowStyle}"></div>`
+        html: `<div class="pin-circle ${isOnline ? 'online' : 'offline'} ${isOutage ? 'outage' : ''}" style="background-color: ${color}; width: 13px; height: 13px; border-radius: 50%; border: 2px solid #ffffff; ${glowStyle}"></div>`
       });
     }
 
@@ -1430,18 +1666,22 @@
         const is24x7 = String(host.is247 || '').toLowerCase() === 'yes';
         const hasPower = String(host.backuppower || '').toLowerCase() === 'yes';
 
+        const outageInfo = state.outageMap[host.name.toLowerCase()] || (host.id ? state.outageMap[host.id.toLowerCase()] : null);
+        const isOutage = !!outageInfo;
+
         const marker = L.marker([lat, lon], {
-          icon: createMarkerIcon(host.status, hasRecentChange)
+          icon: createMarkerIcon(host.status, hasRecentChange, isOutage)
         });
 
         // Add persistent host pill labels matching Image 2
         const dateStr = host.last_change ? formatShortDate(host.last_change) : (isOnline ? 'Online' : 'Offline');
         if (!isOnline) {
           // Offline host: red pill label attached (matches Image 2 e.g. "ashok1516 (01 Oct : 10:00)")
+          const outageTag = isOutage ? ' 🚨 OUTAGE' : '';
           marker.bindTooltip(`
-            <div class="host-pill-label offline">
-              <span>● ${escapeHtml(host.name)}</span>
-              <span style="opacity:0.85; font-size:10px;">(${dateStr})</span>
+            <div class="host-pill-label offline ${isOutage ? 'outage' : ''}">
+              <span>● ${escapeHtml(host.name)}${outageTag}</span>
+              <span style="opacity:0.85; font-size:10px;">(${isOutage ? (outageInfo.duration || 'Active') : dateStr})</span>
             </div>
           `, {
             permanent: true,
@@ -1464,7 +1704,18 @@
         }
 
         marker.bindPopup(`
-          <div style="font-family:sans-serif; min-width:210px; font-size:12px; color:#111827;">
+          <div style="font-family:sans-serif; min-width:215px; font-size:12px; color:#111827;">
+            ${isOutage ? `
+              <div style="background:#fee2e2; border:1px solid #dc2626; border-radius:5px; padding:6px 8px; margin-bottom:6px; color:#991b1b; font-size:11px;">
+                <div style="font-weight:700; display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+                  <span>🚨 ONGOING OUTAGE</span>
+                  <span style="background:#dc2626; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; font-weight:700;">${escapeHtml(outageInfo.severity || 'HIGH')}</span>
+                </div>
+                <div><strong>Zone:</strong> ${escapeHtml(outageInfo.zone || 'Badvel')}</div>
+                <div><strong>Duration:</strong> ${escapeHtml(outageInfo.duration || 'Ongoing')}</div>
+                ${outageInfo.impact ? `<div style="margin-top:3px; font-size:10px; color:#7f1d1d; line-height:1.25;"><strong>Impact:</strong> ${escapeHtml(outageInfo.impact)}</div>` : ''}
+              </div>
+            ` : ''}
             <div style="font-weight:700; font-size:13px; margin-bottom:4px; display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
               <span>${escapeHtml(host.name)}</span>
               ${is24x7 ? '<span style="font-size:9px; background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:3px; border:1px solid #fcd34d;">24/7</span>' : ''}
@@ -1652,6 +1903,202 @@
       renderStaffMarkers();
     };
 
+    // --- Ongoing Outages Telemetry (Same Spreadsheet Ongoing_Outages Tab) ---
+    async function fetchOutagesData() {
+      // 1. First priority: Fetch via Apps Script Web App (?action=outages)
+      if (state.apiUrl) {
+        try {
+          const tokenParam = state.token ? `&token=${encodeURIComponent(state.token)}` : '';
+          const res = await fetch(`${state.apiUrl}?action=outages${tokenParam}`);
+          const data = await res.json();
+          if (data.ok && Array.isArray(data.outages) && data.outages.length > 0) {
+            state.outages = data.outages;
+            renderOutagesUI();
+            return;
+          }
+        } catch (apiErr) {
+          console.warn('Apps Script outages API error, trying GViz fallback:', apiErr.message);
+        }
+      }
+
+      // 2. Secondary: Fetch via Google Visualization API with sheet=Ongoing_Outages
+      const sheetTabsToTry = ['Ongoing_Outages', 'Ongoing Outages'];
+      for (const sheetTab of sheetTabsToTry) {
+        try {
+          const url = `https://docs.google.com/spreadsheets/d/${STAFF_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetTab)}`;
+          const response = await fetch(url);
+          if (response.ok) {
+            const text = await response.text();
+            const jsonStart = text.indexOf('{');
+            const jsonEnd = text.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+              const parsed = JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+              if (parsed.table && parsed.table.rows && parsed.table.rows.length > 0) {
+                state.outages = parsed.table.rows.map(row => {
+                  const c = row.c || [];
+                  const val = (i) => (c[i] && c[i].f !== undefined && c[i].f !== null) ? c[i].f : ((c[i] && c[i].v !== undefined && c[i].v !== null) ? c[i].v : '');
+                  return {
+                    startTime: String(val(0) || '').trim(),
+                    severity: String(val(1) || 'HIGH').trim().toUpperCase(),
+                    outageType: String(val(2) || 'OUTAGE').trim(),
+                    zone: String(val(3) || '').trim(),
+                    entity: String(val(4) || '').trim(),
+                    user: String(val(4) || '').trim(),
+                    duration: String(val(5) || 'Just now').trim(),
+                    status: String(val(6) || 'ACTIVE').trim().toUpperCase(),
+                    impact: String(val(7) || '').trim()
+                  };
+                }).filter(o => o.entity || o.zone || o.outageType);
+
+                if (state.outages.length > 0) {
+                  renderOutagesUI();
+                  return;
+                }
+              }
+            }
+          }
+        } catch (gvizErr) {
+          // Continue to next sheet or fallback
+        }
+      }
+
+      // 3. Fallback: Use live records from user's Ongoing_Outages sheet
+      if (state.outages.length === 0) {
+        state.outages = JSON.parse(JSON.stringify(DEMO_OUTAGES));
+      }
+      renderOutagesUI();
+    }
+
+    function renderOutagesUI() {
+      state.outageMap = {};
+      const activeOutages = [];
+
+      state.outages.forEach(o => {
+        const ent = (o.entity || o.user || '').trim();
+        if (ent) {
+          state.outageMap[ent.toLowerCase()] = o;
+        }
+        if ((o.status || 'ACTIVE').toUpperCase() === 'ACTIVE') {
+          activeOutages.push(o);
+        }
+      });
+
+      const count = activeOutages.length;
+
+      // Update counters in stats ribbon, header badge, and modal title
+      const ribbonCount = document.getElementById('stat-outages-count');
+      if (ribbonCount) ribbonCount.textContent = count;
+
+      const ribbonPill = document.getElementById('statOutagesPill');
+      if (ribbonPill) ribbonPill.style.display = count > 0 ? 'flex' : 'none';
+
+      const headerBadge = document.getElementById('headerOutageBadge');
+      if (headerBadge) {
+        headerBadge.textContent = count;
+        headerBadge.style.display = count > 0 ? 'inline-block' : 'none';
+      }
+
+      const modalCount = document.getElementById('outagesModalCount');
+      if (modalCount) modalCount.textContent = `${count} Active`;
+
+      // Update Top NOC Alert Banner
+      const banner = document.getElementById('nocOutagesAlertBanner');
+      const bannerSummary = document.getElementById('nocOutagesSummaryText');
+      if (banner && bannerSummary) {
+        if (count > 0) {
+          banner.style.display = 'flex';
+          const names = activeOutages.map(o => o.entity || o.user).filter(Boolean).slice(0, 3).join(', ');
+          const extra = count > 3 ? ` +${count - 3} more` : '';
+          const zoneSample = activeOutages[0].zone ? ` • ${activeOutages[0].zone}` : '';
+          bannerSummary.textContent = `${count} high-priority incident(s) active (${names}${extra}${zoneSample})`;
+        } else {
+          banner.style.display = 'none';
+        }
+      }
+
+      // Render Modal Incident Cards
+      const modalList = document.getElementById('outagesModalList');
+      if (modalList) {
+        if (activeOutages.length === 0) {
+          modalList.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:30px;">✅ No active ongoing network outages reported! All systems functioning normally.</div>';
+        } else {
+          modalList.innerHTML = activeOutages.map(o => {
+            const sev = (o.severity || 'HIGH').toUpperCase();
+            const sevClass = sev === 'HIGH' || sev === 'CRITICAL' ? 'high' : (sev === 'MEDIUM' ? 'medium' : 'low');
+            return `
+              <div class="outage-incident-card">
+                <div class="outage-incident-top">
+                  <div class="outage-incident-entity">
+                    <span style="font-weight:700; font-size:14px; color:#f9fafb;">${escapeHtml(o.entity || o.user || 'Unknown Client')}</span>
+                    <span class="outage-severity-pill ${sevClass}">${escapeHtml(sev)}</span>
+                  </div>
+                  <span class="badge-status offline" style="font-size:10px;">${escapeHtml(o.status || 'ACTIVE')}</span>
+                </div>
+
+                <div class="outage-details-grid">
+                  <div class="outage-detail-item">
+                    <span class="outage-detail-label">Outage Type</span>
+                    <span class="outage-detail-val">${escapeHtml(o.outageType || 'DISCONNECT')}</span>
+                  </div>
+                  <div class="outage-detail-item">
+                    <span class="outage-detail-label">Zone / Area</span>
+                    <span class="outage-detail-val">📍 ${escapeHtml(o.zone || 'Badvel Region')}</span>
+                  </div>
+                  <div class="outage-detail-item">
+                    <span class="outage-detail-label">Start Time</span>
+                    <span class="outage-detail-val">🕒 ${escapeHtml(o.startTime || '-')}</span>
+                  </div>
+                  <div class="outage-detail-item">
+                    <span class="outage-detail-label">Duration</span>
+                    <span class="outage-detail-val" style="color:#f87171; font-weight:700;">⏱️ ${escapeHtml(o.duration || 'Ongoing')}</span>
+                  </div>
+                </div>
+
+                ${o.impact ? `
+                  <div class="outage-assessment-box">
+                    <div style="font-weight:700; color:#ef4444; font-size:11px; margin-bottom:2px;">Impact & Root Cause Assessment:</div>
+                    <div style="color:#e5e7eb; font-size:11px; line-height:1.35;">${escapeHtml(o.impact)}</div>
+                  </div>
+                ` : ''}
+
+                <div class="outage-incident-footer">
+                  <span style="font-size:11px; color:#9ca3af;">Host ID: <strong style="color:#cbd5e1;">${escapeHtml(o.entity || o.user)}</strong></span>
+                  <button class="btn btn-sm btn-primary" onclick="window.locateOutageOnMap('${escapeHtml(o.entity || o.user)}')" style="font-size:11px; padding:4px 10px;">
+                    📍 Locate on Map
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+    }
+
+    window.openOutagesModal = function() {
+      renderOutagesUI();
+      openModal('outagesModal');
+    };
+
+    window.closeOutagesModal = function() {
+      closeModal('outagesModal');
+    };
+
+    window.locateOutageOnMap = function(entity) {
+      closeModal('outagesModal');
+      if (!entity) return;
+      const lower = String(entity).toLowerCase();
+      const host = state.hosts.find(h => (h.name && h.name.toLowerCase() === lower) || (h.id && h.id.toLowerCase() === lower));
+      if (host) {
+        window.focusHost(host.name);
+      } else {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+          searchInput.value = entity;
+          renderHostContainers();
+        }
+      }
+    };
+
     // --- UI Renderers ---
     function renderHostContainers() {
       const onlineContainer = document.getElementById('onlineHostsList');
@@ -1679,22 +2126,28 @@
         const isFlapping = state.flappingMap[host.name] >= 3;
         if (isFlapping) flappingCount++;
 
-        const cardStatusClass = isFlapping ? 'flapping-pill' : (isOnline ? 'online-pill' : 'offline-pill');
-        const badgeClass = isFlapping ? 'badge-status flapping' : (isOnline ? 'badge-status online' : 'badge-status offline');
-        const badgeLabel = isFlapping ? 'FLAPPING' : host.status;
+        const outageInfo = state.outageMap[host.name.toLowerCase()] || (host.id ? state.outageMap[host.id.toLowerCase()] : null);
+        const isOutage = !!outageInfo;
+
+        const cardStatusClass = isOutage ? 'outage-active' : (isFlapping ? 'flapping-pill' : (isOnline ? 'online-pill' : 'offline-pill'));
+        const badgeClass = isOutage ? 'badge-status offline' : (isFlapping ? 'badge-status flapping' : (isOnline ? 'badge-status online' : 'badge-status offline'));
+        const badgeLabel = isOutage ? '🚨 OUTAGE' : (isFlapping ? 'FLAPPING' : host.status);
 
         const pillHtml = `
           <div class="host-pill ${cardStatusClass} ${state.selectedHost === host.name ? 'active' : ''}" 
                id="pill-${sanitizeId(host.name)}" 
                onclick="window.focusHost('${escapeHtml(host.name)}')">
             <div class="host-pill-top">
-              <span class="host-name">${escapeHtml(host.name)}</span>
+              <span class="host-name">
+                ${escapeHtml(host.name)}
+                ${isOutage ? '<span style="font-size:9px; background:#dc2626; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px; font-weight:700;">OUTAGE</span>' : ''}
+              </span>
               <span class="host-uptime">${host.uptime_24h || '100%'}</span>
             </div>
             <div class="host-pill-bottom">
               <div class="host-meta">
                 <span class="${badgeClass}">${badgeLabel}</span>
-                <span>${host.id || ''}</span>
+                ${isOutage ? `<span style="color:#f87171; font-size:10px; font-weight:600;">${escapeHtml(outageInfo.severity || 'HIGH')} • ${escapeHtml(outageInfo.duration || 'Ongoing')}</span>` : `<span>${host.id || ''}</span>`}
               </div>
               <span>${formatLastSeen(host.last_seen)}</span>
             </div>
@@ -2032,6 +2485,7 @@
     // --- Host Polling Engine ---
     async function pollHosts() {
       fetchStaffData();
+      fetchOutagesData();
       if (!state.apiUrl || !state.token) {
         loadDemoOrLive();
         return;
@@ -2057,6 +2511,7 @@
           state.hosts = JSON.parse(JSON.stringify(DEMO_HOSTS));
           state.hosts.forEach(h => { state.prevHosts[h.name] = h.status; });
         }
+        renderOutagesUI();
         renderHostContainers();
         updateMapMarkers();
       } else if (state.token) {
@@ -2276,6 +2731,14 @@
         closeModal('historyModal');
       });
 
+      // Outages Modal close
+      const btnCloseOutages = document.getElementById('btnCloseOutages');
+      if (btnCloseOutages) {
+        btnCloseOutages.addEventListener('click', () => {
+          closeModal('outagesModal');
+        });
+      }
+
       // Users Modal
       document.getElementById('btnAdminUsers').addEventListener('click', () => {
         loadAdminUsers();
@@ -2361,6 +2824,7 @@
 
       // Initial restore & poll interval
       fetchStaffData();
+      fetchOutagesData();
       restoreSession();
       setInterval(pollHosts, state.pollInterval);
     });
